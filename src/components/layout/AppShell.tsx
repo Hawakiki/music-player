@@ -5,8 +5,11 @@ import { NoticeToast } from '@/components/layout/NoticeToast'
 import { PlayerBar } from '@/components/layout/PlayerBar'
 import { QueuePanel } from '@/components/layout/QueuePanel'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { usePlayerShortcuts } from '@/hooks/use-player-shortcuts'
 
 export function AppShell() {
+  usePlayerShortcuts()
+
   return (
     <div className="flex h-dvh flex-col">
       <div className="flex min-h-0 flex-1">

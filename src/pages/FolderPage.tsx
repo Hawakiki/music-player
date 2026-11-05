@@ -1,8 +1,11 @@
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Play, Shuffle } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { FolderActions } from '@/components/folders/FolderActions'
+import { TrackList } from '@/components/player/TrackList'
+import { Button } from '@/components/ui/button'
 import { describeFolder } from '@/lib/folders/status'
 import { useLibrary } from '@/stores/library-store'
+import { playList, shufflePlay } from '@/stores/player-store'
 
 export function FolderPage() {
   const { id } = useParams()
@@ -29,20 +32,19 @@ export function FolderPage() {
       </div>
 
       {tracks && tracks.length > 0 && (
-        <ul className="mt-6 border-t">
-          {tracks.map(({ id: trackId, path, name }) => {
-            const directory = path.slice(0, path.length - name.length - 1)
-            return (
-              <li
-                key={trackId}
-                className="flex h-11 flex-col justify-center border-b [contain-intrinsic-size:auto_44px] [content-visibility:auto]"
-              >
-                <span className="truncate">{name}</span>
-                {directory && <span className="truncate text-xs text-faint">{directory}</span>}
-              </li>
-            )
-          })}
-        </ul>
+        <>
+          <div className="mt-4 flex gap-2">
+            <Button size="lg" className="px-4" onClick={() => playList(tracks)}>
+              <Play fill="currentColor" />
+              재생
+            </Button>
+            <Button variant="secondary" size="lg" className="px-4" onClick={() => shufflePlay(tracks)}>
+              <Shuffle />
+              셔플
+            </Button>
+          </div>
+          <TrackList tracks={tracks} />
+        </>
       )}
     </div>
   )

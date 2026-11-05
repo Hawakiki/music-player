@@ -4,6 +4,7 @@ import { LIBRARY_NAV } from '@/lib/navigation'
 import { FolderPage } from '@/pages/FolderPage'
 import { FoldersPage } from '@/pages/FoldersPage'
 import { LibraryPage } from '@/pages/LibraryPage'
+import { QueuePage } from '@/pages/QueuePage'
 import { SettingsPage } from '@/pages/SettingsPage'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           {LIBRARY_NAV.filter((item) => item.path !== '/folders').map((item) => (
             <Route key={item.path} path={item.path} element={<LibraryPage item={item} />} />
           ))}
+          <Route path="/queue" element={<QueuePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/albums" replace />} />
         </Route>
