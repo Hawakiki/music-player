@@ -1,5 +1,7 @@
 import { Outlet } from 'react-router-dom'
+import { DropOverlay } from '@/components/folders/DropOverlay'
 import { MobileNav } from '@/components/layout/MobileNav'
+import { NoticeToast } from '@/components/layout/NoticeToast'
 import { PlayerBar } from '@/components/layout/PlayerBar'
 import { QueuePanel } from '@/components/layout/QueuePanel'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -16,6 +18,8 @@ export function AppShell() {
       </div>
       <PlayerBar />
       <MobileNav />
+      <NoticeToast />
+      <DropOverlay />
     </div>
   )
 }
