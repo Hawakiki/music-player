@@ -1,11 +1,10 @@
-import { ChevronLeft, Play, Shuffle } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { FolderActions } from '@/components/folders/FolderActions'
+import { PlayButtons } from '@/components/library/PlayButtons'
 import { TrackList } from '@/components/player/TrackList'
-import { Button } from '@/components/ui/button'
 import { describeFolder } from '@/lib/folders/status'
 import { useLibrary } from '@/stores/library-store'
-import { playList, shufflePlay } from '@/stores/player-store'
 
 export function FolderPage() {
   const { id } = useParams()
@@ -33,17 +32,12 @@ export function FolderPage() {
 
       {tracks && tracks.length > 0 && (
         <>
-          <div className="mt-4 flex gap-2">
-            <Button size="lg" className="px-4" onClick={() => playList(tracks)}>
-              <Play fill="currentColor" />
-              재생
-            </Button>
-            <Button variant="secondary" size="lg" className="px-4" onClick={() => shufflePlay(tracks)}>
-              <Shuffle />
-              셔플
-            </Button>
+          <div className="mt-4">
+            <PlayButtons tracks={tracks} />
           </div>
-          <TrackList tracks={tracks} />
+          <div className="mt-4">
+            <TrackList tracks={tracks} />
+          </div>
         </>
       )}
     </div>

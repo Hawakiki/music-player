@@ -2,9 +2,14 @@ import { X } from 'lucide-react'
 import { TrackArt } from '@/components/player/TrackArt'
 import { Button } from '@/components/ui/button'
 import type { TrackFile } from '@/lib/folders/types'
-import { trackDirectory, trackTitle } from '@/lib/tracks'
+import { formatTime } from '@/lib/format'
+import { trackSubtitle, trackTitle } from '@/lib/tracks'
 import { cn } from '@/lib/utils'
+import { useMetadata } from '@/stores/metadata-store'
 import { clearUpcoming, jumpTo, removeFromQueue, usePlayer } from '@/stores/player-store'
+
+/** 대기열이 수천 곡이어도 화면이 무거워지지 않도록 앞쪽만 그린다. */
+const MAX_VISIBLE_UPCOMING = 200
 
 interface QueueRowProps {
   track: TrackFile
@@ -14,29 +19,26 @@ interface QueueRowProps {
 }
 
 function QueueRow({ track, current = false, onPlay, onRemove }: QueueRowProps) {
-  const title = trackTitle(track)
-  const directory = trackDirectory(track)
+  const meta = useMetadata((state) => state.items[track.id])
+  const title = trackTitle(track, meta)
+  const subtitle = trackSubtitle(track, meta)
 
   return (
-    <li
-      className={cn(
-        'group flex h-14 items-center rounded-lg [contain-intrinsic-size:auto_56px] [content-visibility:auto]',
-        current ? 'bg-point-soft' : 'hover:bg-raised/60',
-      )}
-    >
+    <li className={cn('group flex h-14 items-center rounded-lg', current ? 'bg-point-soft' : 'hover:bg-raised/60')}>
       <button
         type="button"
         disabled={!onPlay}
         onClick={onPlay}
         className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-lg px-2 text-left"
       >
-        <TrackArt className="size-11" />
-        <span className="min-w-0">
+        <TrackArt artId={meta?.artId} className="size-11" />
+        <span className="min-w-0 flex-1">
           <span className={cn('block truncate', current && 'font-medium text-point')}>{title}</span>
-          {directory && <span className="block truncate text-xs text-faint">{directory}</span>}
+          {subtitle && <span className="block truncate text-xs text-faint">{subtitle}</span>}
         </span>
+        {meta?.duration && <span className="shrink-0 text-xs text-muted-foreground">{formatTime(meta.duration)}</span>}
       </button>
-      {onRemove && (
+      {onRemove ? (
         <Button
           variant="ghost"
           size="icon"
@@ -46,6 +48,8 @@ function QueueRow({ track, current = false, onPlay, onRemove }: QueueRowProps) {
         >
           <X />
         </Button>
+      ) : (
+        <span className="mr-1 size-8 shrink-0" />
       )}
     </li>
   )
@@ -61,6 +65,7 @@ export function QueueList() {
   }
 
   const upcomingCount = queue.length - index - 1
+  const hiddenCount = Math.max(0, upcomingCount - MAX_VISIBLE_UPCOMING)
 
   return (
     <>
@@ -76,7 +81,7 @@ export function QueueList() {
             </button>
           </div>
           <ul>
-            {queue.slice(index + 1).map((track, offset) => {
+            {queue.slice(index + 1, index + 1 + MAX_VISIBLE_UPCOMING).map((track, offset) => {
               const position = index + 1 + offset
               return (
                 <QueueRow
@@ -88,6 +93,9 @@ export function QueueList() {
               )
             })}
           </ul>
+          {hiddenCount > 0 && (
+            <p className="px-1 pt-2 text-xs text-faint">외 {hiddenCount.toLocaleString('ko-KR')}곡</p>
+          )}
         </>
       )}
     </>

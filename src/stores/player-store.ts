@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { loadArtUrl } from '@/hooks/use-art-url'
 import { isErrorNamed } from '@/lib/folders/access'
 import type { TrackFile } from '@/lib/folders/types'
 import { audio, clearSource, hasSource, setSource } from '@/lib/player/audio'
@@ -13,8 +14,9 @@ import {
   type SavedPosition,
   type SavedQueue,
 } from '@/lib/player/session'
-import { trackDirectory, trackTitle } from '@/lib/tracks'
+import { trackSubtitle, trackTitle } from '@/lib/tracks'
 import { notify, rescanFolder, useLibrary } from '@/stores/library-store'
+import { readTrackFirst, useMetadata } from '@/stores/metadata-store'
 
 const RESTART_THRESHOLD_SECONDS = 3
 const SEEK_STEP_SECONDS = 5
@@ -129,6 +131,7 @@ async function loadTrack(index: number, options: { autoplay: boolean; startAt?: 
   const token = loadToken
   wantsPlayback = autoplay
   set({ index, position: startAt, duration: 0, isPlaying: autoplay })
+  readTrackFirst(track)
 
   let file: File
   try {
@@ -281,7 +284,7 @@ export function addToQueue(track: TrackFile) {
 
   sourceQueue = [...sourceQueue, track]
   set({ queue: [...queue, track] })
-  notify(`대기열에 추가했습니다: ${trackTitle(track)}`)
+  notify(`대기열에 추가했습니다: ${trackTitle(track, useMetadata.getState().items[track.id])}`)
 }
 
 function withoutTrack(list: TrackFile[], track: TrackFile) {
@@ -358,12 +361,29 @@ function updateMediaPosition() {
 }
 
 function updateTrackInfo(track: TrackFile | undefined) {
-  document.title = track ? `${trackTitle(track)} - Music Player` : 'Music Player'
+  const meta = track && useMetadata.getState().items[track.id]
+  document.title = track ? `${trackTitle(track, meta)} - Music Player` : 'Music Player'
   if (!('mediaSession' in navigator)) return
 
-  navigator.mediaSession.metadata = track
-    ? new MediaMetadata({ title: trackTitle(track), artist: trackDirectory(track) })
-    : null
+  if (!track) {
+    navigator.mediaSession.metadata = null
+    return
+  }
+
+  const metadata = new MediaMetadata({
+    title: trackTitle(track, meta),
+    artist: trackSubtitle(track, meta),
+    album: meta?.album,
+  })
+  navigator.mediaSession.metadata = metadata
+
+  if (!meta?.artId) return
+  void loadArtUrl(meta.artId).then((src) => {
+    // 그사이 곡이 바뀌었으면 이전 곡의 표지를 붙이지 않는다.
+    if (src && navigator.mediaSession.metadata === metadata) {
+      metadata.artwork = [{ src, type: 'image/jpeg' }]
+    }
+  })
 }
 
 function bindAudioEvents() {
@@ -472,6 +492,12 @@ export function initPlayer() {
       removeFolderTracks((track) => !ids.has(track.folderId))
     }
     tryRestore()
+  })
+
+  // 재생을 시작한 뒤에 태그가 도착하면 제목과 잠금 화면 정보를 고친다.
+  useMetadata.subscribe((state, previous) => {
+    const track = getCurrentTrack()
+    if (track && state.items[track.id] !== previous.items[track.id]) updateTrackInfo(track)
   })
 
   window.addEventListener('pagehide', persistPosition)

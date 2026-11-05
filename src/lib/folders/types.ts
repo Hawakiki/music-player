@@ -18,6 +18,13 @@ export interface TrackFile {
   path: string
   name: string
   source: FileSystemFileHandle | File
+  /** 같은 폴더의 cover.jpg 같은 이미지. 태그에 앨범 아트가 없을 때 쓴다. */
+  cover?: TrackCover
+}
+
+export interface TrackCover {
+  key: string
+  source: FileSystemFileHandle | File
 }
 
 export interface SessionFile {

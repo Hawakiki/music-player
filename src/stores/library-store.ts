@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { deleteFolder, loadFolders, saveFolder } from '@/lib/db'
 import {
   canRememberFolders,
   isErrorNamed,
@@ -6,7 +7,6 @@ import {
   pickDirectoryFiles,
   readDrop,
 } from '@/lib/folders/access'
-import { deleteFolder, loadFolders, saveFolder } from '@/lib/folders/db'
 import { scanDirectory, scanSessionFiles } from '@/lib/folders/scan'
 import type { MusicFolder, SessionFile, TrackFile } from '@/lib/folders/types'
 
@@ -172,10 +172,14 @@ export async function restoreFolders() {
 
   try {
     const stored = await loadFolders()
+    // 권한을 모두 확인한 뒤에 공개한다. 그래야 새로고침한 상세 화면이 '없는 폴더'로 튕기지 않는다.
+    const permissions = await Promise.all(
+      stored.map(({ handle }) => handle.queryPermission({ mode: 'read' })),
+    )
     const restored = stored.map(
-      (folder): MusicFolder => ({
+      (folder, index): MusicFolder => ({
         ...folder,
-        status: 'needs-permission',
+        status: permissions[index] === 'granted' ? 'scanning' : 'needs-permission',
         trackCount: 0,
         unsupportedCount: 0,
       }),
@@ -183,10 +187,9 @@ export async function restoreFolders() {
     useLibrary.setState((state) => ({ ready: true, folders: [...restored, ...state.folders] }))
 
     await Promise.all(
-      stored.map(async ({ id, handle }) => {
-        const permission = await handle.queryPermission({ mode: 'read' })
-        if (permission === 'granted') await runScan(id, handle)
-      }),
+      stored
+        .filter((_, index) => permissions[index] === 'granted')
+        .map(({ id, handle }) => runScan(id, handle)),
     )
   } catch {
     useLibrary.setState({ ready: true })

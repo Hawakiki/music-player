@@ -1,5 +1,6 @@
-import { Folder, LoaderCircle, Plus, Search, Settings2, type LucideIcon } from 'lucide-react'
+import { Folder, LoaderCircle, Plus, Settings2, type LucideIcon } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { SearchField } from '@/components/library/SearchField'
 import { formatCount, isDisconnected } from '@/lib/folders/status'
 import type { MusicFolder } from '@/lib/folders/types'
 import { LIBRARY_NAV } from '@/lib/navigation'
@@ -75,16 +76,7 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-58 shrink-0 flex-col overflow-y-auto border-r bg-panel px-3 py-4 md:flex">
-      <label className="mb-2 flex h-9 items-center gap-2 rounded-lg bg-raised px-2.5 text-muted-foreground">
-        <Search className="size-4 shrink-0" />
-        <input
-          type="search"
-          placeholder="검색"
-          aria-label="검색"
-          disabled
-          className="w-full min-w-0 bg-transparent outline-none placeholder:text-muted-foreground"
-        />
-      </label>
+      <SearchField className="mb-2" />
 
       <nav aria-label="라이브러리">
         <h2 className="px-2.5 pt-4 pb-1.5 text-xs text-faint">라이브러리</h2>
