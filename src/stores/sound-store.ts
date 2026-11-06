@@ -18,8 +18,11 @@ import { usePlayer } from '@/stores/player-store'
 
 const STORAGE_KEY = 'music-player:sound'
 
+export const LP_RPM: Record<LpSpeed, number> = { '33': 100 / 3, '45': 45 }
+
 export type LoudnessMode = 'off' | 'track' | 'album'
-export type CoverView = 'art' | 'vu'
+export type CoverView = 'art' | 'lp' | 'vu'
+export type LpSpeed = '33' | '45'
 export type VuReference = '-18' | '-14' | '-10'
 
 interface SoundState {
@@ -38,6 +41,7 @@ interface SoundState {
   loudness: LoudnessMode
   coverView: CoverView
   vuReference: VuReference
+  lpSpeed: LpSpeed
   /** 원음 듣기. 잠깐 비교하려고 쓰는 값이라 저장하지 않는다. */
   direct: boolean
 }
@@ -58,6 +62,7 @@ const DEFAULTS: SoundState = {
   loudness: 'off',
   coverView: 'art',
   vuReference: '-10',
+  lpSpeed: '33',
   direct: false,
 }
 
@@ -90,6 +95,7 @@ function load(): SoundState {
       loudness,
       coverView,
       vuReference,
+      lpSpeed,
     } = stored as Record<string, unknown>
     return {
       bass: inRange(bass, -12, 12, 0),
@@ -105,8 +111,9 @@ function load(): SoundState {
       restore: toLevel(restore),
       limiter: limiter !== false,
       loudness: loudness === 'track' || loudness === 'album' ? loudness : 'off',
-      coverView: coverView === 'vu' ? 'vu' : 'art',
+      coverView: coverView === 'vu' || coverView === 'lp' ? coverView : 'art',
       vuReference: vuReference === '-18' || vuReference === '-14' ? vuReference : '-10',
+      lpSpeed: lpSpeed === '45' ? '45' : '33',
       direct: false,
     }
   } catch {
@@ -157,6 +164,7 @@ function getSettings(): SoundSettings {
     limiter,
     loudness,
     coverView,
+    lpSpeed,
     direct,
   } = useSound.getState()
   const { queue, index, isPlaying, volume, muted } = usePlayer.getState()
@@ -184,6 +192,7 @@ function getSettings(): SoundSettings {
     volume: muted ? 0 : volume,
     direct,
     meter: coverView === 'vu',
+    rpm: LP_RPM[lpSpeed],
   }
 }
 

@@ -35,7 +35,6 @@ const LIMITER_RATIO = 20
 const VINYL_LOOP_SECONDS = 12
 const VINYL_POPS_PER_SECOND = 5
 const VINYL_HIGH_CUT_FREQUENCY = 9000
-const VINYL_WOW_FREQUENCY = 0.55
 const VINYL_FLUTTER_FREQUENCY = 6.1
 const VINYL_BASE_DELAY_SECONDS = 0.004
 const VINYL_LEVELS = {
@@ -82,6 +81,8 @@ export interface SoundSettings extends EqValues {
   direct: boolean
   /** VU 미터를 쓰면 처리가 없어도 소리를 읽을 그래프가 필요하다. */
   meter: boolean
+  /** 판의 회전 속도. 판이 한 바퀴 돌 때마다 음높이가 출렁이도록 와우 주기를 맞춘다. */
+  rpm: number
 }
 
 interface CrossfeedSide {
@@ -103,7 +104,13 @@ interface SoundGraph {
   tube: TubeStage
   phase: BiquadFilterNode
   phaseSwitch: { off: GainNode; on: GainNode }
-  vinyl: { highCut: BiquadFilterNode; wow: GainNode; flutter: GainNode; noise: GainNode }
+  vinyl: {
+    highCut: BiquadFilterNode
+    wow: GainNode
+    wowRate: AudioParam
+    flutter: GainNode
+    noise: GainNode
+  }
   mix: { leftToLeft: GainNode; leftToRight: GainNode; rightToLeft: GainNode; rightToRight: GainNode }
   crossfeed: { left: CrossfeedSide; right: CrossfeedSide }
   leftOut: GainNode
@@ -263,12 +270,14 @@ function createGraph(): SoundGraph {
   wow.gain.value = 0
   const flutter = context.createGain()
   flutter.gain.value = 0
-  for (const [frequency, depth] of [[VINYL_WOW_FREQUENCY, wow], [VINYL_FLUTTER_FREQUENCY, flutter]] as const) {
+  const createWobble = (depth: GainNode) => {
     const oscillator = context.createOscillator()
-    oscillator.frequency.value = frequency
     oscillator.connect(depth).connect(wobble.delayTime)
     oscillator.start()
+    return oscillator.frequency
   }
+  const wowRate = createWobble(wow)
+  createWobble(flutter).value = VINYL_FLUTTER_FREQUENCY
   afterPhase.connect(highCut).connect(wobble)
 
   const splitter = context.createChannelSplitter(2)
@@ -328,7 +337,7 @@ function createGraph(): SoundGraph {
     tube,
     phase,
     phaseSwitch: { off: phaseOff, on: phaseOn },
-    vinyl: { highCut, wow, flutter, noise },
+    vinyl: { highCut, wow, wowRate, flutter, noise },
     mix,
     crossfeed,
     leftOut,
@@ -405,6 +414,7 @@ function applyValues(current: SoundGraph, next: SoundSettings) {
   if (vinyl) startVinylNoise(current)
   set(current.vinyl.highCut.gain, vinyl?.highCutDb ?? 0)
   set(current.vinyl.wow.gain, vinyl?.wow ?? 0)
+  set(current.vinyl.wowRate, next.rpm / 60)
   set(current.vinyl.flutter.gain, vinyl?.flutter ?? 0)
   set(current.vinyl.noise.gain, vinyl && next.playing && !next.direct ? dbToGain(vinyl.noiseDb) * next.volume : 0)
 

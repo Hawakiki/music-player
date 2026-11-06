@@ -23,6 +23,9 @@
   --color-faint: var(--faint);
   --color-point: var(--point);
   --color-point-soft: var(--point-soft);
+  --color-record: var(--record);
+  --color-groove: var(--groove);
+  --color-tonearm: var(--tonearm);
 
   --color-card: var(--panel);
   --color-card-foreground: var(--foreground);
@@ -57,6 +60,9 @@
   --primary: #2a2d31;
   --primary-foreground: #fbfbfc;
   --destructive: #b3484a;
+  --record: #2b2e32;
+  --groove: #3f4348;
+  --tonearm: #80868e;
 }
 
 /* 블랙 테마 */
@@ -74,6 +80,9 @@
   --primary: #dcdfe3;
   --primary-foreground: #141517;
   --destructive: #d98a8a;
+  --record: #111214;
+  --groove: #26282c;
+  --tonearm: #a7adb4;
 }
 
 @layer base {

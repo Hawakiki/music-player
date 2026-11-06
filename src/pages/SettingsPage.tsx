@@ -3,7 +3,14 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Switch } from '@/components/ui/switch'
 import { useTheme } from '@/hooks/use-theme'
 import type { Theme } from '@/lib/theme'
-import { setSound, useSound, type CoverView, type LoudnessMode, type VuReference } from '@/stores/sound-store'
+import {
+  setSound,
+  useSound,
+  type CoverView,
+  type LoudnessMode,
+  type LpSpeed,
+  type VuReference,
+} from '@/stores/sound-store'
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'auto', label: '자동' },
@@ -13,7 +20,13 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 
 const COVER_VIEW_OPTIONS: { value: CoverView; label: string }[] = [
   { value: 'art', label: '앨범 표지' },
+  { value: 'lp', label: 'LP' },
   { value: 'vu', label: 'VU 미터' },
+]
+
+const LP_SPEED_OPTIONS: { value: LpSpeed; label: string }[] = [
+  { value: '33', label: '33⅓' },
+  { value: '45', label: '45' },
 ]
 
 const VU_REFERENCE_OPTIONS: { value: VuReference; label: string }[] = [
@@ -39,7 +52,7 @@ function SettingRow({ title, description, children }: SettingRowProps) {
     <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="font-medium">{title}</p>
-        <p className="text-caption text-muted-foreground">{description}</p>
+        <p className="text-caption break-keep text-muted-foreground">{description}</p>
       </div>
       {children}
     </div>
@@ -52,6 +65,7 @@ export function SettingsPage() {
   const limiter = useSound((state) => state.limiter)
   const coverView = useSound((state) => state.coverView)
   const vuReference = useSound((state) => state.vuReference)
+  const lpSpeed = useSound((state) => state.lpSpeed)
 
   return (
     <div className="max-w-2xl">
@@ -68,6 +82,18 @@ export function SettingsPage() {
             options={COVER_VIEW_OPTIONS}
             value={coverView}
             onChange={(next) => setSound({ coverView: next })}
+          />
+        </SettingRow>
+        <SettingRow
+          title="LP 회전 속도 (rpm)"
+          description="판이 도는 속도입니다. 바이닐 효과의 음높이 흔들림도 같은 주기로 맞춥니다."
+        >
+          <SegmentedControl
+            name="lp-speed"
+            options={LP_SPEED_OPTIONS}
+            value={lpSpeed}
+            disabled={coverView !== 'lp'}
+            onChange={(next) => setSound({ lpSpeed: next })}
           />
         </SettingRow>
         <SettingRow

@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { NoticeToast } from '@/components/layout/NoticeToast'
 import { EqPanel } from '@/components/nowplaying/EqPanel'
+import { LpView } from '@/components/nowplaying/LpView'
 import { SoundPanel } from '@/components/nowplaying/SoundPanel'
 import { TrackInfoPanel } from '@/components/nowplaying/TrackInfoPanel'
 import { VuMeter } from '@/components/nowplaying/VuMeter'
@@ -46,6 +47,14 @@ function Cover({ track, artId }: CoverProps) {
 
   if (url) return <img src={url} alt="" className={`${COVER_SIZE} shrink-0 rounded-lg object-cover`} />
   return <TrackArt artId={artId} className={`${COVER_SIZE} rounded-lg`} />
+}
+
+function CoverSpot({ track, artId }: CoverProps) {
+  const view = useSound((sound) => sound.coverView)
+
+  if (view === 'vu') return <VuMeter className={COVER_SIZE} />
+  if (view === 'lp') return <LpView artId={artId} className={COVER_SIZE} />
+  return <Cover track={track} artId={artId} />
 }
 
 function formatKhz(sampleRate: number) {
@@ -92,7 +101,6 @@ export function NowPlayingPage() {
   const nextMeta = useMetadata((metadata) => (next ? metadata.items[next.id] : undefined))
   const { albumByTrack } = useLibraryIndex()
   const album = track && albumByTrack.get(track.id)
-  const coverView = useSound((sound) => sound.coverView)
   const format = meta && formatLabel(meta)
   const title = track ? trackTitle(track, meta) : '재생 중인 곡 없음'
 
@@ -122,7 +130,7 @@ export function NowPlayingPage() {
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_27.5rem] lg:overflow-hidden">
         <main className="flex min-w-0 flex-col gap-6 px-4 py-6 md:px-10 lg:overflow-y-auto lg:py-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:gap-10">
-            {coverView === 'vu' ? <VuMeter className={COVER_SIZE} /> : <Cover track={track} artId={meta?.artId} />}
+            <CoverSpot track={track} artId={meta?.artId} />
             <div className="min-w-0 flex-1 pb-1">
               <h1 className="text-4xl leading-tight font-semibold">{title}</h1>
               {meta?.artist && <p className="mt-1 text-lg text-muted-foreground">{meta.artist}</p>}
