@@ -134,7 +134,7 @@ C의 상단 플레이어 막대는 아래 플레이어 막대와 겹치므로 �
 |---|---|---|---|
 | 드래그 앤 드롭 (`dataTransfer`) | 파일, `webkitGetAsEntry()`로 폴더도 가능 | 전부 | 다시 끌어와야 함 |
 | `<input type="file" webkitdirectory>` | 폴더 선택, 하위 파일까지 읽기 | 전부 (데스크톱 기준) | 다시 선택해야 함 |
-| `showDirectoryPicker()` | 폴더 핸들로 읽기/쓰기 | Chrome/Edge 계열만 (Android Chrome은 132부터, 실기기 확인 필요) | 핸들 저장 후 권한 확인만으로 재접근 |
+| `showDirectoryPicker()` | 폴더 핸들로 읽기/쓰기 | Chrome/Edge 계열만 (Android Chrome은 132부터, Galaxy S22에서 동작 확인) | 핸들 저장 후 권한 확인만으로 재접근 |
 | OPFS | 브라우저 전용 저장소에 파일 복사 | 전부 | 유지됨 (용량 차지) |
 
 - 재생: `URL.createObjectURL(file)`을 `<audio>`에 연결
