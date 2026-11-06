@@ -119,7 +119,7 @@ export function SoundPanel() {
   const restoreStatus = useRestoreStatus((state) => state.status)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 break-keep">
       <label className="flex items-center justify-between gap-4">
         <span>
           <span className="block font-medium">원음 듣기</span>
