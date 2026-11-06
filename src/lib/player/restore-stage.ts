@@ -1,4 +1,4 @@
-import { createButterworth, dbToGain } from './audio-nodes'
+import { createButterworth, dbToGain, smoothParam } from './audio-nodes'
 
 export const RESTORE_INTERVAL_MS = 250
 
@@ -37,6 +37,7 @@ const TILT_OFFSET_HZ = 3000
 const LAYER_MAKEUP_DB = 12
 /** 절벽 바로 아래가 듬성듬성한 곡은 계산이 크게 나온다. 큰 순간 소리가 나지 않게 막는다. */
 const LAYER_MAX_DB = 6
+const LAYER_STEP_DB = 0.5
 
 const MOVE_SECONDS = 0.05
 const FADE_SECONDS = 0.3
@@ -181,9 +182,9 @@ function moveLayer(stage: RestoreStage, cutoff: number) {
   const at = context.currentTime
   const shiftHz = getShiftHz(cutoff, context.sampleRate)
   const move = (filter: BiquadFilterNode, frequency: number) =>
-    filter.frequency.setTargetAtTime(frequency, at, MOVE_SECONDS)
+    smoothParam(filter.frequency, frequency, MOVE_SECONDS, at)
 
-  stage.shift.frequency.setTargetAtTime(shiftHz, at, MOVE_SECONDS)
+  smoothParam(stage.shift.frequency, shiftHz, MOVE_SECONDS, at)
   stage.sourceLow.forEach((filter) => move(filter, cutoff - shiftHz - SOURCE_MARGIN_HZ))
   stage.sourceHigh.forEach((filter) => move(filter, cutoff))
   stage.layerEdge.forEach((filter) => move(filter, cutoff + LAYER_EDGE_OFFSET_HZ))
@@ -200,7 +201,9 @@ function getLayerGain(stage: RestoreStage) {
   const start = cutoff - getShiftHz(cutoff, sampleRate)
   const near = bandDb(mean, binHz, cutoff - 1000, cutoff - EDGE_GAP_HZ)
   const copied = bandDb(mean, binHz, start + EDGE_GAP_HZ, start + 1000)
-  return dbToGain(Math.min(near - copied + LAYER_MAKEUP_DB, LAYER_MAX_DB) + RESTORE_LEVELS[strength])
+  // 평균이 조금 바뀔 때마다 값을 다시 예약하지 않도록 잘게 끊는다.
+  const db = Math.min(near - copied + LAYER_MAKEUP_DB, LAYER_MAX_DB) + RESTORE_LEVELS[strength]
+  return dbToGain(Math.round(db / LAYER_STEP_DB) * LAYER_STEP_DB)
 }
 
 function readFrame({ analyser, frame, sum }: RestoreStage) {
@@ -250,7 +253,7 @@ export function measureRestore(stage: RestoreStage): RestoreStatus {
     moveLayer(stage, found.cutoff)
   }
 
-  stage.layer.gain.setTargetAtTime(getLayerGain(stage), context.currentTime, FADE_SECONDS)
+  smoothParam(stage.layer.gain, getLayerGain(stage), FADE_SECONDS, context.currentTime)
   return getRestoreStatus(stage)
 }
 
@@ -261,7 +264,7 @@ export function resetRestore(stage: RestoreStage) {
   stage.frames = 0
   stage.settle = SETTLE_TICKS
   stage.cutoff = null
-  stage.layer.gain.setTargetAtTime(0, stage.input.context.currentTime, CUT_SECONDS)
+  smoothParam(stage.layer.gain, 0, CUT_SECONDS, stage.input.context.currentTime)
 }
 
 export function applyRestore(

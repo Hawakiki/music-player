@@ -12,14 +12,26 @@ export function useWaveform(track: TrackFile | undefined) {
     if (!track) return
 
     let current = true
-    const timer = setTimeout(() => {
-      void readPeaks(track).then((peaks) => {
-        if (current) setLoaded({ id: track.id, peaks })
-      })
-    }, START_DELAY_MS)
+    let timer = 0
+
+    // 곡 전체를 푸는 일이라 무겁다. 화면이 꺼진 동안 하면 재생과 CPU를 다툰다.
+    const start = () => {
+      if (document.hidden) return
+
+      document.removeEventListener('visibilitychange', start)
+      timer = window.setTimeout(() => {
+        void readPeaks(track).then((peaks) => {
+          if (current) setLoaded({ id: track.id, peaks })
+        })
+      }, START_DELAY_MS)
+    }
+
+    document.addEventListener('visibilitychange', start)
+    start()
 
     return () => {
       current = false
+      document.removeEventListener('visibilitychange', start)
       clearTimeout(timer)
     }
   }, [track])

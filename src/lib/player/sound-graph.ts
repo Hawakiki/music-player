@@ -1,5 +1,5 @@
 import { audio } from './audio'
-import { createFilter, dbToGain } from './audio-nodes'
+import { createFilter, dbToGain, smoothParam, snapParam } from './audio-nodes'
 import {
   RESTORE_INTERVAL_MS,
   applyRestore,
@@ -124,6 +124,7 @@ interface SoundGraph {
 let graph: SoundGraph | null = null
 let settings: SoundSettings | null = null
 let currentRoute: string | null = null
+let carryingSound = false
 let probedSampleRate: number | null = null
 let vinylNoiseStarted = false
 let restoreTimer: number | null = null
@@ -383,7 +384,11 @@ function applyCrossfeedSide(side: CrossfeedSide, level: CrossfeedLevel, set: (pa
 
 function applyValues(current: SoundGraph, next: SoundSettings) {
   const now = current.context.currentTime
-  const set = (param: AudioParam, value: number) => param.setTargetAtTime(value, now, SMOOTHING_SECONDS)
+  // 그래프로 소리가 지나고 있고 앞으로도 지날 때만 부드럽게 옮긴다.
+  const set =
+    carryingSound && isProcessing(next)
+      ? (param: AudioParam, value: number) => smoothParam(param, value, SMOOTHING_SECONDS, now)
+      : snapParam
 
   set(current.input.gain, dbToGain(next.trackGainDb))
   applyRestore(current.restore, next.restore, set)
@@ -428,6 +433,7 @@ function applyRoute(current: SoundGraph, next: SoundSettings) {
   const route = `${processing}:${processing && next.limiter}`
   if (route === currentRoute) return
   currentRoute = route
+  carryingSound = processing
 
   const { context, source, input, output, limiter, makeup, meter } = current
   source.disconnect()
