@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
-import { TONE_RANGE, type CrossfeedLevel } from '@/lib/player/sound-graph'
+import { TONE_RANGE, type CrossfeedLevel, type PhaseLevel, type VinylLevel } from '@/lib/player/sound-graph'
 import { cn } from '@/lib/utils'
 import { resetSound, setSound, useSound } from '@/stores/sound-store'
 
@@ -14,6 +14,9 @@ const CROSSFEED_OPTIONS: { value: CrossfeedLevel; label: string }[] = [
   { value: 'strong', label: '강' },
 ]
 
+const VINYL_OPTIONS = CROSSFEED_OPTIONS as { value: VinylLevel; label: string }[]
+const PHASE_OPTIONS = CROSSFEED_OPTIONS as { value: PhaseLevel; label: string }[]
+
 function formatDb(value: number) {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)} dB`
 }
@@ -23,8 +26,12 @@ function formatBalance(value: number) {
   return `${value < 0 ? '왼쪽' : '오른쪽'} ${Math.round(Math.abs(value) * 100)}`
 }
 
-function formatWidth(value: number) {
+function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`
+}
+
+function formatTube(value: number) {
+  return value === 0 ? '끔' : formatPercent(value)
 }
 
 interface SoundSliderProps {
@@ -36,21 +43,24 @@ interface SoundSliderProps {
   format: (value: number) => string
   onChange: (value: number) => void
   disabled?: boolean
+  /** 왼쪽 끝이 기준인 값. 기본은 가운데가 기준이다. */
+  fromStart?: boolean
 }
 
-/** 여기 값은 모두 가운데가 기준이라, 기본 슬라이더 대신 가운데에서 양쪽으로 채운다. */
-function SoundSlider({ label, value, min, max, step, format, onChange, disabled }: SoundSliderProps) {
+/** 가운데가 기준인 값은 기본 슬라이더 대신 가운데에서 양쪽으로 채운다. */
+function SoundSlider({ label, value, min, max, step, format, onChange, disabled, fromStart = false }: SoundSliderProps) {
   const percent = ((value - min) / (max - min)) * 100
+  const origin = fromStart ? 0 : 50
 
   return (
     <div className="grid grid-cols-[5.5rem_minmax(0,1fr)_4.5rem] items-center gap-3">
       <span>{label}</span>
       <div className="relative flex items-center">
         <div className="absolute inset-x-0 h-1 rounded-full bg-raised">
-          <div className="absolute top-1/2 left-1/2 h-2.5 w-px -translate-y-1/2 bg-faint" />
+          {!fromStart && <div className="absolute top-1/2 left-1/2 h-2.5 w-px -translate-y-1/2 bg-faint" />}
           <div
             className="absolute inset-y-0 rounded-full bg-point"
-            style={{ left: `${Math.min(percent, 50)}%`, width: `${Math.abs(percent - 50)}%` }}
+            style={{ left: `${Math.min(percent, origin)}%`, width: `${Math.abs(percent - origin)}%` }}
           />
         </div>
         <Slider
@@ -85,7 +95,7 @@ function SoundSection({ title, children }: SoundSectionProps) {
 }
 
 export function SoundPanel() {
-  const { bass, treble, balance, width, mono, crossfeed, direct } = useSound()
+  const { bass, treble, balance, width, mono, crossfeed, tube, vinyl, phase, direct } = useSound()
 
   return (
     <div className="flex flex-col gap-4">
@@ -137,7 +147,7 @@ export function SoundPanel() {
             min={0}
             max={2}
             step={0.05}
-            format={formatWidth}
+            format={formatPercent}
             disabled={mono}
             onChange={(next) => setSound({ width: next })}
           />
@@ -163,6 +173,43 @@ export function SoundPanel() {
               options={CROSSFEED_OPTIONS}
               value={crossfeed}
               onChange={(next) => setSound({ crossfeed: next })}
+            />
+          </div>
+        </SoundSection>
+
+        <SoundSection title="효과">
+          <SoundSlider
+            label="진공관"
+            value={tube}
+            min={0}
+            max={1}
+            step={0.05}
+            format={formatTube}
+            fromStart
+            onChange={(next) => setSound({ tube: next })}
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              <span className="block">바이닐</span>
+              <span className="block text-caption text-muted-foreground">표면 잡음과 미세한 회전 흔들림</span>
+            </span>
+            <SegmentedControl
+              name="vinyl"
+              options={VINYL_OPTIONS}
+              value={vinyl}
+              onChange={(next) => setSound({ vinyl: next })}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              <span className="block">저역 위상 보정</span>
+              <span className="block text-caption text-muted-foreground">음량은 두고 저역 위상만 돌림</span>
+            </span>
+            <SegmentedControl
+              name="phase"
+              options={PHASE_OPTIONS}
+              value={phase}
+              onChange={(next) => setSound({ phase: next })}
             />
           </div>
         </SoundSection>
