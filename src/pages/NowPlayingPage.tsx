@@ -5,6 +5,7 @@ import { NoticeToast } from '@/components/layout/NoticeToast'
 import { EqPanel } from '@/components/nowplaying/EqPanel'
 import { SoundPanel } from '@/components/nowplaying/SoundPanel'
 import { TrackInfoPanel } from '@/components/nowplaying/TrackInfoPanel'
+import { VuMeter } from '@/components/nowplaying/VuMeter'
 import { WaveSeek } from '@/components/nowplaying/WaveSeek'
 import { FavoriteButton } from '@/components/player/FavoriteButton'
 import { QueueList } from '@/components/player/QueueList'
@@ -25,6 +26,7 @@ import { getOutputSampleRate } from '@/lib/player/sound-graph'
 import { trackTitle } from '@/lib/tracks'
 import { useMetadata } from '@/stores/metadata-store'
 import { usePlayer } from '@/stores/player-store'
+import { useSound } from '@/stores/sound-store'
 
 const COVER_SIZE = 'aspect-square w-full max-w-sm lg:h-[min(32.5rem,calc(100dvh-23rem))] lg:w-auto lg:max-w-none'
 
@@ -90,6 +92,7 @@ export function NowPlayingPage() {
   const nextMeta = useMetadata((metadata) => (next ? metadata.items[next.id] : undefined))
   const { albumByTrack } = useLibraryIndex()
   const album = track && albumByTrack.get(track.id)
+  const coverView = useSound((sound) => sound.coverView)
   const format = meta && formatLabel(meta)
   const title = track ? trackTitle(track, meta) : '재생 중인 곡 없음'
 
@@ -119,7 +122,7 @@ export function NowPlayingPage() {
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_27.5rem] lg:overflow-hidden">
         <main className="flex min-w-0 flex-col gap-6 px-4 py-6 md:px-10 lg:overflow-y-auto lg:py-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:gap-10">
-            <Cover track={track} artId={meta?.artId} />
+            {coverView === 'vu' ? <VuMeter className={COVER_SIZE} /> : <Cover track={track} artId={meta?.artId} />}
             <div className="min-w-0 flex-1 pb-1">
               <h1 className="text-4xl leading-tight font-semibold">{title}</h1>
               {meta?.artist && <p className="mt-1 text-lg text-muted-foreground">{meta.artist}</p>}

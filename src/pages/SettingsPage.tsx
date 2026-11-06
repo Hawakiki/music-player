@@ -3,12 +3,23 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Switch } from '@/components/ui/switch'
 import { useTheme } from '@/hooks/use-theme'
 import type { Theme } from '@/lib/theme'
-import { setSound, useSound, type LoudnessMode } from '@/stores/sound-store'
+import { setSound, useSound, type CoverView, type LoudnessMode, type VuReference } from '@/stores/sound-store'
 
 const THEME_OPTIONS: { value: Theme; label: string }[] = [
   { value: 'auto', label: '자동' },
   { value: 'black', label: '블랙' },
   { value: 'white', label: '화이트' },
+]
+
+const COVER_VIEW_OPTIONS: { value: CoverView; label: string }[] = [
+  { value: 'art', label: '앨범 표지' },
+  { value: 'vu', label: 'VU 미터' },
+]
+
+const VU_REFERENCE_OPTIONS: { value: VuReference; label: string }[] = [
+  { value: '-18', label: '-18' },
+  { value: '-14', label: '-14' },
+  { value: '-10', label: '-10' },
 ]
 
 const LOUDNESS_OPTIONS: { value: LoudnessMode; label: string }[] = [
@@ -39,6 +50,8 @@ export function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const loudness = useSound((state) => state.loudness)
   const limiter = useSound((state) => state.limiter)
+  const coverView = useSound((state) => state.coverView)
+  const vuReference = useSound((state) => state.vuReference)
 
   return (
     <div className="max-w-2xl">
@@ -48,6 +61,26 @@ export function SettingsPage() {
         <h2 className="border-b pb-2 text-base font-semibold">화면</h2>
         <SettingRow title="테마" description="자동은 기기나 브라우저의 다크 모드 설정을 따릅니다.">
           <SegmentedControl name="theme" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
+        </SettingRow>
+        <SettingRow title="표지 자리" description="재생 화면의 앨범 표지 자리에 보여 줄 내용입니다.">
+          <SegmentedControl
+            name="cover-view"
+            options={COVER_VIEW_OPTIONS}
+            value={coverView}
+            onChange={(next) => setSound({ coverView: next })}
+          />
+        </SettingRow>
+        <SettingRow
+          title="0 VU 기준 (dBFS)"
+          description="바늘이 0을 가리키는 음량입니다. 요즘 곡은 -10, 조용한 녹음은 -18이 잘 맞습니다."
+        >
+          <SegmentedControl
+            name="vu-reference"
+            options={VU_REFERENCE_OPTIONS}
+            value={vuReference}
+            disabled={coverView !== 'vu'}
+            onChange={(next) => setSound({ vuReference: next })}
+          />
         </SettingRow>
       </section>
 

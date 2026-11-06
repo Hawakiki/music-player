@@ -19,6 +19,8 @@ import { usePlayer } from '@/stores/player-store'
 const STORAGE_KEY = 'music-player:sound'
 
 export type LoudnessMode = 'off' | 'track' | 'album'
+export type CoverView = 'art' | 'vu'
+export type VuReference = '-18' | '-14' | '-10'
 
 interface SoundState {
   bass: number
@@ -34,6 +36,8 @@ interface SoundState {
   restore: RestoreLevel
   limiter: boolean
   loudness: LoudnessMode
+  coverView: CoverView
+  vuReference: VuReference
   /** 원음 듣기. 잠깐 비교하려고 쓰는 값이라 저장하지 않는다. */
   direct: boolean
 }
@@ -52,6 +56,8 @@ const DEFAULTS: SoundState = {
   restore: 'off',
   limiter: true,
   loudness: 'off',
+  coverView: 'art',
+  vuReference: '-10',
   direct: false,
 }
 
@@ -68,8 +74,23 @@ function load(): SoundState {
     const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
     if (typeof stored !== 'object' || stored === null) return DEFAULTS
 
-    const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, restore, limiter, loudness } =
-      stored as Record<string, unknown>
+    const {
+      bass,
+      treble,
+      balance,
+      width,
+      mono,
+      crossfeed,
+      tube,
+      tubeMode,
+      vinyl,
+      phase,
+      restore,
+      limiter,
+      loudness,
+      coverView,
+      vuReference,
+    } = stored as Record<string, unknown>
     return {
       bass: inRange(bass, -12, 12, 0),
       treble: inRange(treble, -12, 12, 0),
@@ -84,6 +105,8 @@ function load(): SoundState {
       restore: toLevel(restore),
       limiter: limiter !== false,
       loudness: loudness === 'track' || loudness === 'album' ? loudness : 'off',
+      coverView: coverView === 'vu' ? 'vu' : 'art',
+      vuReference: vuReference === '-18' || vuReference === '-14' ? vuReference : '-10',
       direct: false,
     }
   } catch {
@@ -119,8 +142,23 @@ function getTrackGainDb(meta: TrackMeta | undefined, mode: LoudnessMode) {
 
 function getSettings(): SoundSettings {
   const { enabled, preamp, gains } = useEq.getState()
-  const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, restore, limiter, loudness, direct } =
-    useSound.getState()
+  const {
+    bass,
+    treble,
+    balance,
+    width,
+    mono,
+    crossfeed,
+    tube,
+    tubeMode,
+    vinyl,
+    phase,
+    restore,
+    limiter,
+    loudness,
+    coverView,
+    direct,
+  } = useSound.getState()
   const { queue, index, isPlaying, volume, muted } = usePlayer.getState()
   const track = queue[index]
   const meta = track && useMetadata.getState().items[track.id]
@@ -145,6 +183,7 @@ function getSettings(): SoundSettings {
     playing: isPlaying,
     volume: muted ? 0 : volume,
     direct,
+    meter: coverView === 'vu',
   }
 }
 

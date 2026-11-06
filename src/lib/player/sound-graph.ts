@@ -11,6 +11,7 @@ import {
   type RestoreStatus,
 } from './restore-stage'
 import { applyTube, createTubeStage, type TubeMode, type TubeStage } from './tube-stage'
+import { createMeterTap, type MeterTap } from './vu-meter'
 
 export const EQ_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 export const EQ_RANGE = 12
@@ -79,6 +80,8 @@ export interface SoundSettings extends EqValues {
   volume: number
   /** 원음 듣기. 켜면 모든 처리를 건너뛴다. */
   direct: boolean
+  /** VU 미터를 쓰면 처리가 없어도 소리를 읽을 그래프가 필요하다. */
+  meter: boolean
 }
 
 interface CrossfeedSide {
@@ -108,6 +111,7 @@ interface SoundGraph {
   output: GainNode
   limiter: DynamicsCompressorNode
   makeup: GainNode
+  meter: MeterTap
 }
 
 let graph: SoundGraph | null = null
@@ -310,6 +314,8 @@ function createGraph(): SoundGraph {
   makeup.gain.value = 1 / getLimiterMakeup()
   limiter.connect(makeup)
 
+  const meter = createMeterTap(context)
+
   return {
     context,
     source,
@@ -330,6 +336,7 @@ function createGraph(): SoundGraph {
     output,
     limiter,
     makeup,
+    meter,
   }
 }
 
@@ -412,17 +419,20 @@ function applyRoute(current: SoundGraph, next: SoundSettings) {
   if (route === currentRoute) return
   currentRoute = route
 
-  const { context, source, input, output, limiter, makeup } = current
+  const { context, source, input, output, limiter, makeup, meter } = current
   source.disconnect()
   output.disconnect()
   makeup.disconnect()
 
+  // 리미터 앞에서 읽어야 깨질 뻔한 소리가 피크로 보인다.
   if (!processing) {
     source.connect(context.destination)
+    source.connect(meter.input)
     return
   }
 
   source.connect(input)
+  output.connect(meter.input)
   if (next.limiter) {
     output.connect(limiter)
     makeup.connect(context.destination)
@@ -457,7 +467,7 @@ export function updateSound(next: SoundSettings) {
 
   if (!graph) {
     // 첫 클릭 전에 만들면 자동 재생 정책에 막힌다. 그때는 재생을 누를 때 만든다.
-    if (!isProcessing(next) || navigator.userActivation?.hasBeenActive === false) return
+    if ((!isProcessing(next) && !next.meter) || navigator.userActivation?.hasBeenActive === false) return
     graph = createGraph()
   }
 
@@ -470,6 +480,10 @@ export function updateSound(next: SoundSettings) {
 export function prepareSoundForPlayback() {
   if (settings) updateSound(settings)
   void graph?.context.resume()
+}
+
+export function getMeterTap() {
+  return graph?.meter ?? null
 }
 
 export function getOutputSampleRate() {
