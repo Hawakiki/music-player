@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { TrackArt } from '@/components/player/TrackArt'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useSpin } from '@/hooks/use-spin'
 import { cn } from '@/lib/utils'
 import { usePlayer } from '@/stores/player-store'
 import { LP_RPM, useSound } from '@/stores/sound-store'
@@ -27,21 +27,8 @@ const ARM_LENGTH = 262
 const PIVOT_DISTANCE = Math.hypot(PIVOT_X - DISC_X, PIVOT_Y - DISC_Y)
 const DISC_DIRECTION = Math.atan2(DISC_Y - PIVOT_Y, DISC_X - PIVOT_X)
 
-const BASE_RPM = LP_RPM['33']
 /** 재생과 일시정지 때 판이 속도를 바꾸는 빠르기. */
 const SPIN_SECONDS = 0.28
-const SPIN_SETTLED = 0.002
-
-/** playbackRate에 대입하면 매번 현재 시각을 다시 찾아가서 가속 중에 판이 멈칫한다. */
-function setSpinRate(animation: Animation, rate: number) {
-  if (rate === 0) {
-    animation.pause()
-    return
-  }
-
-  animation.updatePlaybackRate(rate)
-  if (animation.playState !== 'running') animation.play()
-}
 
 function percent(units: number) {
   return `${(units / VIEW_SIZE) * 100}%`
@@ -119,49 +106,12 @@ interface LpViewProps {
   className: string
 }
 
-/** 회전은 합성기에 맡겨서 매 프레임 그리지 않는다. 시간을 쌓아 도는 것이라 탐색해도 판이 튀지 않는다. */
 export function LpView({ artId, className }: LpViewProps) {
   const isPlaying = usePlayer((player) => player.isPlaying)
   const rpm = LP_RPM[useSound((state) => state.lpSpeed)]
-  const reducedMotion = useReducedMotion()
-
   const disc = useRef<HTMLDivElement>(null)
-  const spin = useRef<Animation | null>(null)
-  const rate = useRef(0)
-  const lastFrame = useRef(0)
-  const ramp = useRef(0)
 
-  useEffect(() => {
-    const animation = disc.current?.animate(
-      [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
-      { duration: 60000 / BASE_RPM, iterations: Infinity },
-    )
-    if (!animation) return
-
-    animation.pause()
-    spin.current = animation
-    return () => animation.cancel()
-  }, [])
-
-  useEffect(() => {
-    const target = isPlaying && !reducedMotion ? rpm / BASE_RPM : 0
-    lastFrame.current = performance.now()
-
-    const step = (now: number) => {
-      // 첫 프레임의 시각은 effect가 실행된 시각보다 이를 수 있다. 음수면 판이 거꾸로 돈다.
-      const seconds = Math.max((now - lastFrame.current) / 1000, 0)
-      lastFrame.current = now
-
-      rate.current += (target - rate.current) * (1 - Math.exp(-seconds / SPIN_SECONDS))
-      if (Math.abs(target - rate.current) < SPIN_SETTLED) rate.current = target
-      if (spin.current) setSpinRate(spin.current, rate.current)
-
-      if (rate.current !== target) ramp.current = requestAnimationFrame(step)
-    }
-
-    ramp.current = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(ramp.current)
-  }, [isPlaying, reducedMotion, rpm])
+  useSpin(disc, { turnsPerSecond: isPlaying ? rpm / 60 : 0, degrees: 360, settleSeconds: SPIN_SECONDS })
 
   return (
     <div role="img" aria-label="LP" className={cn('relative overflow-hidden rounded-lg bg-raised', className)}>

@@ -2,6 +2,7 @@ import { Search, Settings2 } from 'lucide-react'
 import { useMemo } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { NoticeToast } from '@/components/layout/NoticeToast'
+import { CassetteView } from '@/components/nowplaying/CassetteView'
 import { EqPanel } from '@/components/nowplaying/EqPanel'
 import { LpView } from '@/components/nowplaying/LpView'
 import { SoundPanel } from '@/components/nowplaying/SoundPanel'
@@ -29,7 +30,10 @@ import { useMetadata } from '@/stores/metadata-store'
 import { usePlayer } from '@/stores/player-store'
 import { useSound } from '@/stores/sound-store'
 
-const COVER_SIZE = 'aspect-square w-full max-w-sm lg:h-[min(32.5rem,calc(100dvh-23rem))] lg:w-auto lg:max-w-none'
+const COVER_DESKTOP = 'lg:h-[min(32.5rem,calc(100dvh-23rem))] lg:w-auto lg:max-w-none'
+const COVER_SIZE = `aspect-square w-full max-w-sm ${COVER_DESKTOP}`
+/** 카세트는 휴대폰에서 세로로 길게 서므로 정사각형으로 묶지 않는다. */
+const CASSETTE_SIZE = `w-full max-w-sm lg:aspect-square ${COVER_DESKTOP}`
 
 const TAB = 'flex-none px-0 after:bg-point'
 
@@ -49,10 +53,18 @@ function Cover({ track, artId }: CoverProps) {
   return <TrackArt artId={artId} className={`${COVER_SIZE} rounded-lg`} />
 }
 
-function CoverSpot({ track, artId }: CoverProps) {
+interface CoverSpotProps {
+  track: TrackFile | undefined
+  meta: TrackMeta | undefined
+  title: string
+}
+
+function CoverSpot({ track, meta, title }: CoverSpotProps) {
+  const artId = meta?.artId
   const view = useSound((sound) => sound.coverView)
 
   if (view === 'vu') return <VuMeter className={COVER_SIZE} />
+  if (view === 'cassette') return <CassetteView title={title} meta={meta} className={CASSETTE_SIZE} />
   if (view === 'lp') return <LpView artId={artId} className={COVER_SIZE} />
   return <Cover track={track} artId={artId} />
 }
@@ -130,7 +142,7 @@ export function NowPlayingPage() {
       <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_27.5rem] lg:overflow-hidden">
         <main className="flex min-w-0 flex-col gap-6 px-4 py-6 md:px-10 lg:overflow-y-auto lg:py-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:gap-10">
-            <CoverSpot track={track} artId={meta?.artId} />
+            <CoverSpot track={track} meta={meta} title={title} />
             <div className="min-w-0 flex-1 pb-1">
               <h1 className="text-4xl leading-tight font-semibold">{title}</h1>
               {meta?.artist && <p className="mt-1 text-lg text-muted-foreground">{meta.artist}</p>}

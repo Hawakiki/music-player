@@ -26,6 +26,7 @@
   --color-record: var(--record);
   --color-groove: var(--groove);
   --color-tonearm: var(--tonearm);
+  --color-tape: var(--tape);
 
   --color-card: var(--panel);
   --color-card-foreground: var(--foreground);
@@ -63,6 +64,7 @@
   --record: #2b2e32;
   --groove: #3f4348;
   --tonearm: #80868e;
+  --tape: #2b2e32;
 }
 
 /* 블랙 테마 */
@@ -83,6 +85,7 @@
   --record: #111214;
   --groove: #26282c;
   --tonearm: #a7adb4;
+  --tape: #4a4f56;
 }
 
 @layer base {

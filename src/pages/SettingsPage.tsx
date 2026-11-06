@@ -21,6 +21,7 @@ const THEME_OPTIONS: { value: Theme; label: string }[] = [
 const COVER_VIEW_OPTIONS: { value: CoverView; label: string }[] = [
   { value: 'art', label: '앨범 표지' },
   { value: 'lp', label: 'LP' },
+  { value: 'cassette', label: '카세트' },
   { value: 'vu', label: 'VU 미터' },
 ]
 
