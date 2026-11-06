@@ -23,7 +23,9 @@ const TUBE_CURVE_SIZE = 4097
 const TUBE_SLOPE = 1.6
 const TUBE_BIAS = 0.3
 const TUBE_MIN_DRIVE = 0.02
-const TUBE_MAX_DRIVE = 0.65
+const TUBE_MAX_DRIVE = 0.4
+const TUBE_BASS_CUT_DB = 18
+const TUBE_BASS_CUT_FREQUENCY = 200
 const TUBE_DC_BLOCK_FREQUENCY = 10
 
 const VINYL_LOOP_SECONDS = 12
@@ -253,9 +255,25 @@ function createGraph(): SoundGraph {
   shaper.oversample = '4x'
   const tubeLevel = context.createGain()
   const dcBlock = createShelf(context, 'highpass', TUBE_DC_BLOCK_FREQUENCY)
+
+  // 큰 베이스가 곡선을 밀면 베이스가 윙윙거리고 위에 얹힌 보컬까지 찌그러진다.
+  // 곡선에 넣기 전에 저역을 빼고 나온 뒤 복원한다.
+  const bassCut = createShelf(context, 'lowshelf', TUBE_BASS_CUT_FREQUENCY)
+  bassCut.gain.value = -TUBE_BASS_CUT_DB
+  const bassRestore = createShelf(context, 'lowshelf', TUBE_BASS_CUT_FREQUENCY)
+  bassRestore.gain.value = TUBE_BASS_CUT_DB
+
   const afterTube = context.createGain()
   previous.connect(tubeDry).connect(afterTube)
-  previous.connect(tubeDrive).connect(shaper).connect(tubeLevel).connect(dcBlock).connect(tubeWet).connect(afterTube)
+  previous
+    .connect(tubeDrive)
+    .connect(bassCut)
+    .connect(shaper)
+    .connect(tubeLevel)
+    .connect(bassRestore)
+    .connect(dcBlock)
+    .connect(tubeWet)
+    .connect(afterTube)
 
   const phase = createShelf(context, 'allpass', PHASE_FREQUENCIES.medium)
   phase.Q.value = PHASE_Q
