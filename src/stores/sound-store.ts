@@ -8,6 +8,7 @@ import {
   type SoundSettings,
   type VinylLevel,
 } from '@/lib/player/sound-graph'
+import type { TubeMode } from '@/lib/player/tube-stage'
 import { useEq } from '@/stores/eq-store'
 import { notify } from '@/stores/library-store'
 import { useMetadata } from '@/stores/metadata-store'
@@ -25,6 +26,7 @@ interface SoundState {
   mono: boolean
   crossfeed: CrossfeedLevel
   tube: number
+  tubeMode: TubeMode
   vinyl: VinylLevel
   phase: PhaseLevel
   limiter: boolean
@@ -41,6 +43,7 @@ const DEFAULTS: SoundState = {
   mono: false,
   crossfeed: 'off',
   tube: 0,
+  tubeMode: 'triode',
   vinyl: 'off',
   phase: 'off',
   limiter: true,
@@ -61,7 +64,7 @@ function load(): SoundState {
     const stored: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
     if (typeof stored !== 'object' || stored === null) return DEFAULTS
 
-    const { bass, treble, balance, width, mono, crossfeed, tube, vinyl, phase, limiter, loudness } =
+    const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, limiter, loudness } =
       stored as Record<string, unknown>
     return {
       bass: inRange(bass, -12, 12, 0),
@@ -71,6 +74,7 @@ function load(): SoundState {
       mono: mono === true,
       crossfeed: toLevel(crossfeed),
       tube: inRange(tube, 0, 1, 0),
+      tubeMode: tubeMode === 'ultralinear' ? 'ultralinear' : 'triode',
       vinyl: toLevel(vinyl),
       phase: toLevel(phase),
       limiter: limiter !== false,
@@ -90,8 +94,8 @@ export function setSound(patch: Partial<SoundState>) {
 
 /** 소리 조절만 되돌린다. 설정 화면의 값은 그대로 둔다. */
 export function resetSound() {
-  const { bass, treble, balance, width, mono, crossfeed, tube, vinyl, phase } = DEFAULTS
-  useSound.setState({ bass, treble, balance, width, mono, crossfeed, tube, vinyl, phase })
+  const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase } = DEFAULTS
+  useSound.setState({ bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase })
 }
 
 function getTrackGainDb(meta: TrackMeta | undefined, mode: LoudnessMode) {
@@ -107,7 +111,7 @@ function getTrackGainDb(meta: TrackMeta | undefined, mode: LoudnessMode) {
 
 function getSettings(): SoundSettings {
   const { enabled, preamp, gains } = useEq.getState()
-  const { bass, treble, balance, width, mono, crossfeed, tube, vinyl, phase, limiter, loudness, direct } =
+  const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, limiter, loudness, direct } =
     useSound.getState()
   const { queue, index, isPlaying, volume, muted } = usePlayer.getState()
   const track = queue[index]
@@ -124,6 +128,7 @@ function getSettings(): SoundSettings {
     mono,
     crossfeed,
     tube,
+    tubeMode,
     vinyl,
     phase,
     limiter,

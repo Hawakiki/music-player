@@ -1,4 +1,6 @@
 import { audio } from './audio'
+import { createFilter, dbToGain } from './audio-nodes'
+import { applyTube, createTubeStage, type TubeMode, type TubeStage } from './tube-stage'
 
 export const EQ_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
 export const EQ_RANGE = 12
@@ -18,15 +20,6 @@ const CROSSFEED_LEVELS = {
 
 const LIMITER_THRESHOLD_DB = -1
 const LIMITER_RATIO = 20
-
-const TUBE_CURVE_SIZE = 4097
-const TUBE_SLOPE = 1.6
-const TUBE_BIAS = 0.3
-const TUBE_MIN_DRIVE = 0.02
-const TUBE_MAX_DRIVE = 0.4
-const TUBE_BASS_CUT_DB = 18
-const TUBE_BASS_CUT_FREQUENCY = 200
-const TUBE_DC_BLOCK_FREQUENCY = 10
 
 const VINYL_LOOP_SECONDS = 12
 const VINYL_POPS_PER_SECOND = 5
@@ -64,6 +57,7 @@ export interface SoundSettings extends EqValues {
   crossfeed: CrossfeedLevel
   /** 0이면 꺼짐, 1이 최대. */
   tube: number
+  tubeMode: TubeMode
   vinyl: VinylLevel
   phase: PhaseLevel
   limiter: boolean
@@ -91,7 +85,7 @@ interface SoundGraph {
   bands: BiquadFilterNode[]
   bass: BiquadFilterNode
   treble: BiquadFilterNode
-  tube: { dry: GainNode; wet: GainNode; drive: GainNode; level: GainNode }
+  tube: TubeStage
   phase: BiquadFilterNode
   phaseSwitch: { off: GainNode; on: GainNode }
   vinyl: { highCut: BiquadFilterNode; wow: GainNode; flutter: GainNode; noise: GainNode }
@@ -109,10 +103,6 @@ let settings: SoundSettings | null = null
 let currentRoute: string | null = null
 let probedSampleRate: number | null = null
 let vinylNoiseStarted = false
-
-function dbToGain(db: number) {
-  return 10 ** (db / 20)
-}
 
 /** DynamicsCompressorNode가 자동으로 올리는 음량. 되돌려야 켜기만 해도 소리가 커지지 않는다. */
 function getLimiterMakeup() {
@@ -139,19 +129,12 @@ export function isProcessing(next: SoundSettings) {
   )
 }
 
-function createShelf(context: AudioContext, type: BiquadFilterType, frequency: number) {
-  const filter = context.createBiquadFilter()
-  filter.type = type
-  filter.frequency.value = frequency
-  return filter
-}
-
 function createCrossfeedSide(context: AudioContext, bus: GainNode, own: GainNode, other: GainNode): CrossfeedSide {
-  const shelf = createShelf(context, 'highshelf', CROSSFEED_LEVELS.medium.cutoff)
+  const shelf = createFilter(context, 'highshelf', CROSSFEED_LEVELS.medium.cutoff)
   const direct = context.createGain()
   bus.connect(shelf).connect(direct).connect(own)
 
-  const lowpass = createShelf(context, 'lowpass', CROSSFEED_LEVELS.medium.cutoff)
+  const lowpass = createFilter(context, 'lowpass', CROSSFEED_LEVELS.medium.cutoff)
   const delay = context.createDelay(0.01)
   delay.delayTime.value = CROSSFEED_DELAY_SECONDS
   const feed = context.createGain()
@@ -159,19 +142,6 @@ function createCrossfeedSide(context: AudioContext, bus: GainNode, own: GainNode
   bus.connect(lowpass).connect(delay).connect(feed).connect(other)
 
   return { shelf, direct, lowpass, feed }
-}
-
-/** 작은 소리는 그대로 두고 큰 소리만 비대칭으로 눌러서 짝수 배음을 만든다. */
-function createTubeCurve() {
-  const curve = new Float32Array(TUBE_CURVE_SIZE)
-  const offset = Math.tanh(TUBE_BIAS)
-  const smallSignalGain = TUBE_SLOPE * (1 - offset ** 2)
-
-  for (let i = 0; i < TUBE_CURVE_SIZE; i += 1) {
-    const x = (i / (TUBE_CURVE_SIZE - 1)) * 2 - 1
-    curve[i] = (Math.tanh(TUBE_SLOPE * x + TUBE_BIAS) - offset) / smallSignalGain
-  }
-  return curve
 }
 
 function createRandom(seed: number) {
@@ -232,12 +202,12 @@ function createGraph(): SoundGraph {
 
   const preamp = context.createGain()
   const bands = EQ_BANDS.map((frequency) => {
-    const filter = createShelf(context, 'peaking', frequency)
+    const filter = createFilter(context, 'peaking', frequency)
     filter.Q.value = BAND_Q
     return filter
   })
-  const bass = createShelf(context, 'lowshelf', BASS_FREQUENCY)
-  const treble = createShelf(context, 'highshelf', TREBLE_FREQUENCY)
+  const bass = createFilter(context, 'lowshelf', BASS_FREQUENCY)
+  const treble = createFilter(context, 'highshelf', TREBLE_FREQUENCY)
 
   let previous: AudioNode = input
   for (const node of [preamp, ...bands, bass, treble]) {
@@ -245,46 +215,19 @@ function createGraph(): SoundGraph {
     previous = node
   }
 
-  // 원음과 왜곡음을 섞으면 왜곡 쪽 지연으로 고역이 패인다. 그래서 둘 중 하나만 지나게 한다.
-  const tubeDry = context.createGain()
-  const tubeWet = context.createGain()
-  tubeWet.gain.value = 0
-  const tubeDrive = context.createGain()
-  const shaper = context.createWaveShaper()
-  shaper.curve = createTubeCurve()
-  shaper.oversample = '4x'
-  const tubeLevel = context.createGain()
-  const dcBlock = createShelf(context, 'highpass', TUBE_DC_BLOCK_FREQUENCY)
+  const tube = createTubeStage(context)
+  previous.connect(tube.input)
 
-  // 큰 베이스가 곡선을 밀면 베이스가 윙윙거리고 위에 얹힌 보컬까지 찌그러진다.
-  // 곡선에 넣기 전에 저역을 빼고 나온 뒤 복원한다.
-  const bassCut = createShelf(context, 'lowshelf', TUBE_BASS_CUT_FREQUENCY)
-  bassCut.gain.value = -TUBE_BASS_CUT_DB
-  const bassRestore = createShelf(context, 'lowshelf', TUBE_BASS_CUT_FREQUENCY)
-  bassRestore.gain.value = TUBE_BASS_CUT_DB
-
-  const afterTube = context.createGain()
-  previous.connect(tubeDry).connect(afterTube)
-  previous
-    .connect(tubeDrive)
-    .connect(bassCut)
-    .connect(shaper)
-    .connect(tubeLevel)
-    .connect(bassRestore)
-    .connect(dcBlock)
-    .connect(tubeWet)
-    .connect(afterTube)
-
-  const phase = createShelf(context, 'allpass', PHASE_FREQUENCIES.medium)
+  const phase = createFilter(context, 'allpass', PHASE_FREQUENCIES.medium)
   phase.Q.value = PHASE_Q
   const phaseOff = context.createGain()
   const phaseOn = context.createGain()
   phaseOn.gain.value = 0
   const afterPhase = context.createGain()
-  afterTube.connect(phaseOff).connect(afterPhase)
-  afterTube.connect(phase).connect(phaseOn).connect(afterPhase)
+  tube.output.connect(phaseOff).connect(afterPhase)
+  tube.output.connect(phase).connect(phaseOn).connect(afterPhase)
 
-  const highCut = createShelf(context, 'highshelf', VINYL_HIGH_CUT_FREQUENCY)
+  const highCut = createFilter(context, 'highshelf', VINYL_HIGH_CUT_FREQUENCY)
   const wobble = context.createDelay(0.02)
   wobble.delayTime.value = VINYL_BASE_DELAY_SECONDS
   const wow = context.createGain()
@@ -350,7 +293,7 @@ function createGraph(): SoundGraph {
     bands,
     bass,
     treble,
-    tube: { dry: tubeDry, wet: tubeWet, drive: tubeDrive, level: tubeLevel },
+    tube,
     phase,
     phaseSwitch: { off: phaseOff, on: phaseOn },
     vinyl: { highCut, wow, flutter, noise },
@@ -418,12 +361,7 @@ function applyValues(current: SoundGraph, next: SoundSettings) {
   applyCrossfeedSide(current.crossfeed.left, next.crossfeed, set)
   applyCrossfeedSide(current.crossfeed.right, next.crossfeed, set)
 
-  // 앞쪽을 곱게 쓸 수 있도록 곡선으로 올린다.
-  const drive = TUBE_MIN_DRIVE + next.tube ** 1.5 * (TUBE_MAX_DRIVE - TUBE_MIN_DRIVE)
-  set(current.tube.drive.gain, drive)
-  set(current.tube.level.gain, 1 / drive)
-  set(current.tube.wet.gain, next.tube > 0 ? 1 : 0)
-  set(current.tube.dry.gain, next.tube > 0 ? 0 : 1)
+  applyTube(current.tube, next.tube, next.tubeMode, set)
 
   if (next.phase !== 'off') current.phase.frequency.value = PHASE_FREQUENCIES[next.phase]
   set(current.phaseSwitch.on.gain, next.phase === 'off' ? 0 : 1)

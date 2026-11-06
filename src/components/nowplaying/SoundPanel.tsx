@@ -4,6 +4,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { TONE_RANGE, type CrossfeedLevel, type PhaseLevel, type VinylLevel } from '@/lib/player/sound-graph'
+import type { TubeMode } from '@/lib/player/tube-stage'
 import { cn } from '@/lib/utils'
 import { resetSound, setSound, useSound } from '@/stores/sound-store'
 
@@ -13,6 +14,16 @@ const CROSSFEED_OPTIONS: { value: CrossfeedLevel; label: string }[] = [
   { value: 'medium', label: '중' },
   { value: 'strong', label: '강' },
 ]
+
+const TUBE_MODE_OPTIONS: { value: TubeMode; label: string }[] = [
+  { value: 'triode', label: '트라이오드' },
+  { value: 'ultralinear', label: '울트라리니어' },
+]
+
+const TUBE_MODE_HINTS: Record<TubeMode, string> = {
+  triode: '부드럽고 풍성한 소리',
+  ultralinear: '또렷하고 단단한 소리',
+}
 
 const VINYL_OPTIONS = CROSSFEED_OPTIONS as { value: VinylLevel; label: string }[]
 const PHASE_OPTIONS = CROSSFEED_OPTIONS as { value: PhaseLevel; label: string }[]
@@ -95,7 +106,7 @@ function SoundSection({ title, children }: SoundSectionProps) {
 }
 
 export function SoundPanel() {
-  const { bass, treble, balance, width, mono, crossfeed, tube, vinyl, phase, direct } = useSound()
+  const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, direct } = useSound()
 
   return (
     <div className="flex flex-col gap-4">
@@ -188,6 +199,19 @@ export function SoundPanel() {
             fromStart
             onChange={(next) => setSound({ tube: next })}
           />
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              <span className="block">앰프 모드</span>
+              <span className="block text-caption text-muted-foreground">{TUBE_MODE_HINTS[tubeMode]}</span>
+            </span>
+            <SegmentedControl
+              name="tube-mode"
+              options={TUBE_MODE_OPTIONS}
+              value={tubeMode}
+              disabled={tube === 0}
+              onChange={(next) => setSound({ tubeMode: next })}
+            />
+          </div>
           <div className="flex items-center justify-between gap-3">
             <span>
               <span className="block">바이닐</span>
