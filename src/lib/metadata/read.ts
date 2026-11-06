@@ -1,7 +1,7 @@
 import { parseBlob, selectCover, type IAudioMetadata } from 'music-metadata'
 import { hasArt, saveArt } from '@/lib/db'
 import type { TrackCover } from '@/lib/folders/types'
-import type { CoverJob, CoverResult, ReadJob, ReadResult, ReadTags } from './types'
+import { META_VERSION, type CoverJob, type CoverResult, type ReadJob, type ReadResult, type ReadTags } from './types'
 
 const THUMBNAIL_SIZE = 384
 const THUMBNAIL_QUALITY = 0.85
@@ -88,6 +88,10 @@ function toTags({ common, format }: IAudioMetadata): Omit<ReadTags, 'size' | 'la
     bitsPerSample: format.bitsPerSample,
     codec: format.codec ?? format.container,
     lossless: format.lossless,
+    trackGain: common.replaygain_track_gain?.dB ?? format.trackGain,
+    trackPeak: common.replaygain_track_peak?.ratio ?? format.trackPeakLevel,
+    albumGain: common.replaygain_album_gain?.dB ?? format.albumGain,
+    albumPeak: common.replaygain_album_peak?.ratio,
   }
 }
 
@@ -134,9 +138,9 @@ export async function readTrack({ id, source, cover, known }: ReadJob): Promise<
   try {
     const metadata = await parseBlob(file)
     const artId = (await readEmbeddedArt(metadata)) ?? (await readCover(cover))
-    return { id, kind: 'read', tags: { ...toTags(metadata), size, lastModified, artId } }
+    return { id, kind: 'read', tags: { ...toTags(metadata), version: META_VERSION, size, lastModified, artId } }
   } catch {
     // 태그를 못 읽는 파일도 파일 이름과 폴더 이미지로 라이브러리에 올린다.
-    return { id, kind: 'read', tags: { size, lastModified, artId: await readCover(cover) } }
+    return { id, kind: 'read', tags: { version: META_VERSION, size, lastModified, artId: await readCover(cover) } }
   }
 }

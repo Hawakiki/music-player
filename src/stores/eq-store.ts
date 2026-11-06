@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { configureEq, EQ_BANDS, EQ_RANGE, updateEq, type EqValues } from '@/lib/player/eq'
+import { EQ_BANDS, EQ_RANGE, type EqValues } from '@/lib/player/sound-graph'
 import { notify } from '@/stores/library-store'
 
 const STORAGE_KEY = 'music-player:eq'
@@ -104,28 +104,11 @@ export function deletePreset(id: string) {
 }
 
 export function initEq() {
-  const { enabled, preamp, gains } = get()
-  configureEq({ enabled, preamp, gains })
-
-  useEq.subscribe((state, previous) => {
-    const { enabled: nextEnabled, preamp: nextPreamp, gains: nextGains, presetId, customPresets } = state
-
+  useEq.subscribe(({ enabled, preamp, gains, presetId, customPresets }) => {
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ enabled: nextEnabled, preamp: nextPreamp, gains: nextGains, presetId, customPresets }),
-      )
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ enabled, preamp, gains, presetId, customPresets }))
     } catch {
       // 저장하지 못해도 지금 소리에는 적용한다.
-    }
-
-    if (state.enabled === previous.enabled && state.preamp === previous.preamp && state.gains === previous.gains) return
-
-    try {
-      updateEq({ enabled: nextEnabled, preamp: nextPreamp, gains: nextGains })
-    } catch {
-      set({ enabled: false })
-      notify('이 브라우저에서는 이퀄라이저를 켤 수 없습니다.')
     }
   })
 }

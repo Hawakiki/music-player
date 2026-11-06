@@ -9,9 +9,9 @@ import { buttonVariants } from '@/components/ui/button'
 import { formatLabel } from '@/lib/metadata/format'
 import { trackSubtitle, trackTitle } from '@/lib/tracks'
 import { cn } from '@/lib/utils'
-import { useEq } from '@/stores/eq-store'
 import { useMetadata } from '@/stores/metadata-store'
 import { usePlayer } from '@/stores/player-store'
+import { useSoundProcessing } from '@/stores/sound-store'
 
 interface QueueLinkProps {
   className: string
@@ -28,7 +28,7 @@ function QueueLink({ className }: QueueLinkProps) {
 export function PlayerBar() {
   const track = usePlayer((state) => state.queue[state.index])
   const meta = useMetadata((state) => (track ? state.items[track.id] : undefined))
-  const eqEnabled = useEq((state) => state.enabled)
+  const processing = useSoundProcessing()
   const format = meta && formatLabel(meta)
   const { pathname } = useLocation()
 
@@ -75,7 +75,7 @@ export function PlayerBar() {
           aria-label="이퀄라이저"
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon-lg' }),
-            eqEnabled && 'text-point hover:text-point',
+            processing && 'text-point hover:text-point',
           )}
         >
           <SlidersVertical className="size-5" />

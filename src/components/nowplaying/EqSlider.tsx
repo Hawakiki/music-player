@@ -1,5 +1,5 @@
 import { Slider as SliderPrimitive } from '@base-ui/react/slider'
-import { EQ_RANGE } from '@/lib/player/eq'
+import { EQ_RANGE } from '@/lib/player/sound-graph'
 
 function formatGain(value: number) {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)}`

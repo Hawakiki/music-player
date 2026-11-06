@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { deleteFolderRecords, deleteTrackMeta, loadTrackMeta, pruneArt, saveTrackMeta } from '@/lib/db'
 import type { TrackFile } from '@/lib/folders/types'
-import type { ReadJob, ReadResult, TrackMeta, WorkerResult } from '@/lib/metadata/types'
+import { META_VERSION, type ReadJob, type ReadResult, type TrackMeta, type WorkerResult } from '@/lib/metadata/types'
 import { notify, useLibrary } from '@/stores/library-store'
 
 const CONCURRENCY = 4
@@ -56,6 +56,10 @@ function getWorker() {
   return worker
 }
 
+function isCurrent(item: TrackMeta | undefined) {
+  return item?.version === META_VERSION
+}
+
 function isIdle() {
   return pending.size === 0 && urgent.size === 0 && active.size === 0
 }
@@ -85,7 +89,8 @@ function pump() {
     const track = takeNext()
     if (!track) return
 
-    const known = get().items[track.id]
+    const stored = get().items[track.id]
+    const known = isCurrent(stored) ? stored : undefined
     const job: ReadJob = {
       kind: 'read',
       id: track.id,
@@ -145,7 +150,7 @@ function enqueue(tracks: TrackFile[]) {
 
   for (const track of tracks) {
     pending.set(track.id, track)
-    if (!items[track.id] && !counted.has(track.id)) {
+    if (!isCurrent(items[track.id]) && !counted.has(track.id)) {
       counted.add(track.id)
       added += 1
     }
@@ -168,7 +173,7 @@ export function requestCover({ id, source, cover }: TrackFile) {
 
 /** 재생을 시작한 곡은 줄을 서지 않고 먼저 읽는다. */
 export function readTrackFirst(track: TrackFile) {
-  if (get().items[track.id] || active.has(track.id)) return
+  if (isCurrent(get().items[track.id]) || active.has(track.id)) return
 
   pending.delete(track.id)
   urgent.set(track.id, track)

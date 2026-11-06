@@ -26,6 +26,7 @@ export function TrackInfoPanel({ track, meta }: TrackInfoPanelProps) {
     ['디스크', meta?.discNo],
     ['길이', meta?.duration ? formatTime(meta.duration) : undefined],
     ['크기', meta ? formatSize(meta.size) : undefined],
+    ['ReplayGain', meta?.trackGain === undefined ? undefined : `${meta.trackGain.toFixed(2)} dB`],
     ['경로', track.path],
   ]
 

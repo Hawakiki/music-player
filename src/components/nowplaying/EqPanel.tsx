@@ -3,7 +3,7 @@ import { EqSlider } from '@/components/nowplaying/EqSlider'
 import { NameDialog } from '@/components/playlists/NameDialog'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { EQ_BANDS } from '@/lib/player/eq'
+import { EQ_BANDS } from '@/lib/player/sound-graph'
 import { cn } from '@/lib/utils'
 import {
   BUILT_IN_PRESETS,
@@ -16,6 +16,7 @@ import {
   setPreamp,
   useEq,
 } from '@/stores/eq-store'
+import { useSound } from '@/stores/sound-store'
 
 const CUSTOM_VALUE = ''
 
@@ -29,6 +30,7 @@ export function EqPanel() {
   const gains = useEq((state) => state.gains)
   const presetId = useEq((state) => state.presetId)
   const customPresets = useEq((state) => state.customPresets)
+  const direct = useSound((state) => state.direct)
   const [saving, setSaving] = useState(false)
 
   const isCustomPreset = customPresets.some((preset) => preset.id === presetId)
@@ -59,7 +61,7 @@ export function EqPanel() {
         ))}
       </select>
 
-      <div className={cn('grid min-h-0 flex-1 grid-cols-[auto_1px_repeat(10,minmax(0,1fr))] gap-x-1 py-2', !enabled && 'opacity-60')}>
+      <div className={cn('grid min-h-0 flex-1 grid-cols-[auto_1px_repeat(10,minmax(0,1fr))] gap-x-1 py-2', (!enabled || direct) && 'opacity-60')}>
         <EqSlider label="프리앰프" ariaLabel="프리앰프" value={preamp} onChange={setPreamp} />
         <div className="my-6 bg-border" />
         {EQ_BANDS.map((frequency, index) => (

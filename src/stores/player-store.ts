@@ -3,7 +3,7 @@ import { loadArtUrl } from '@/hooks/use-art-url'
 import { isErrorNamed } from '@/lib/folders/access'
 import type { TrackFile } from '@/lib/folders/types'
 import { audio, clearSource, hasSource, setSource } from '@/lib/player/audio'
-import { prepareEqForPlayback } from '@/lib/player/eq'
+import { prepareSoundForPlayback } from '@/lib/player/sound-graph'
 import {
   loadPosition,
   loadQueue,
@@ -158,7 +158,7 @@ async function loadTrack(index: number, options: { autoplay: boolean; startAt?: 
 }
 
 function startAudio() {
-  prepareEqForPlayback()
+  prepareSoundForPlayback()
   audio.play().catch((error: unknown) => {
     // 재생할 수 없는 파일은 error 이벤트에서 처리한다.
     if (isErrorNamed(error, 'NotAllowedError')) set({ isPlaying: false })

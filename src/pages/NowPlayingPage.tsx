@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { NoticeToast } from '@/components/layout/NoticeToast'
 import { EqPanel } from '@/components/nowplaying/EqPanel'
+import { SoundPanel } from '@/components/nowplaying/SoundPanel'
 import { TrackInfoPanel } from '@/components/nowplaying/TrackInfoPanel'
 import { WaveSeek } from '@/components/nowplaying/WaveSeek'
 import { FavoriteButton } from '@/components/player/FavoriteButton'
@@ -20,7 +21,7 @@ import { usePlayerShortcuts } from '@/hooks/use-player-shortcuts'
 import type { TrackFile } from '@/lib/folders/types'
 import { formatLabel } from '@/lib/metadata/format'
 import type { TrackMeta } from '@/lib/metadata/types'
-import { getOutputSampleRate } from '@/lib/player/eq'
+import { getOutputSampleRate } from '@/lib/player/sound-graph'
 import { trackTitle } from '@/lib/tracks'
 import { useMetadata } from '@/stores/metadata-store'
 import { usePlayer } from '@/stores/player-store'
@@ -30,7 +31,7 @@ const COVER_SIZE = 'aspect-square w-full max-w-sm lg:h-[min(32.5rem,calc(100dvh-
 const TAB = 'flex-none px-0 after:bg-point'
 
 function isPanelTab(value: string | null) {
-  return value === 'queue' || value === 'eq' || value === 'info'
+  return value === 'queue' || value === 'eq' || value === 'sound' || value === 'info'
 }
 
 interface CoverProps {
@@ -170,6 +171,9 @@ export function NowPlayingPage() {
               <TabsTrigger value="eq" className={TAB}>
                 이퀄라이저
               </TabsTrigger>
+              <TabsTrigger value="sound" className={TAB}>
+                음향
+              </TabsTrigger>
               <TabsTrigger value="info" className={TAB}>
                 곡 정보
               </TabsTrigger>
@@ -179,6 +183,9 @@ export function NowPlayingPage() {
             </TabsContent>
             <TabsContent value="eq" className="min-h-0 overflow-y-auto px-6 py-4">
               <EqPanel />
+            </TabsContent>
+            <TabsContent value="sound" className="min-h-0 overflow-y-auto px-6 py-4">
+              <SoundPanel />
             </TabsContent>
             <TabsContent value="info" className="min-h-0 overflow-y-auto px-6 py-4">
               <TrackInfoPanel track={track} meta={meta} />
