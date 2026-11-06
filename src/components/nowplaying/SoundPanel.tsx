@@ -4,9 +4,10 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { TONE_RANGE, type CrossfeedLevel, type PhaseLevel, type VinylLevel } from '@/lib/player/sound-graph'
+import type { RestoreLevel, RestoreStatus } from '@/lib/player/restore-stage'
 import type { TubeMode } from '@/lib/player/tube-stage'
 import { cn } from '@/lib/utils'
-import { resetSound, setSound, useSound } from '@/stores/sound-store'
+import { resetSound, setSound, useRestoreStatus, useSound } from '@/stores/sound-store'
 
 const CROSSFEED_OPTIONS: { value: CrossfeedLevel; label: string }[] = [
   { value: 'off', label: '끔' },
@@ -27,6 +28,7 @@ const TUBE_MODE_HINTS: Record<TubeMode, string> = {
 
 const VINYL_OPTIONS = CROSSFEED_OPTIONS as { value: VinylLevel; label: string }[]
 const PHASE_OPTIONS = CROSSFEED_OPTIONS as { value: PhaseLevel; label: string }[]
+const RESTORE_OPTIONS = CROSSFEED_OPTIONS as { value: RestoreLevel; label: string }[]
 
 function formatDb(value: number) {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)} dB`
@@ -43,6 +45,13 @@ function formatPercent(value: number) {
 
 function formatTube(value: number) {
   return value === 0 ? '끔' : formatPercent(value)
+}
+
+function getRestoreHint(level: RestoreLevel, status: RestoreStatus) {
+  if (level === 'off') return '잘린 고역을 추정해서 채움'
+  if (status === 'analyzing') return '잘린 지점을 찾는 중'
+  if (status === 'none') return '잘린 고역이 없는 곡'
+  return `${(status / 1000).toFixed(1)} kHz 위를 채우는 중`
 }
 
 interface SoundSliderProps {
@@ -106,7 +115,8 @@ function SoundSection({ title, children }: SoundSectionProps) {
 }
 
 export function SoundPanel() {
-  const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, direct } = useSound()
+  const { bass, treble, balance, width, mono, crossfeed, tube, tubeMode, vinyl, phase, restore, direct } = useSound()
+  const restoreStatus = useRestoreStatus((state) => state.status)
 
   return (
     <div className="flex flex-col gap-4">
@@ -234,6 +244,18 @@ export function SoundPanel() {
               options={PHASE_OPTIONS}
               value={phase}
               onChange={(next) => setSound({ phase: next })}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span>
+              <span className="block">고역 복원</span>
+              <span className="block text-caption text-muted-foreground">{getRestoreHint(restore, restoreStatus)}</span>
+            </span>
+            <SegmentedControl
+              name="restore"
+              options={RESTORE_OPTIONS}
+              value={restore}
+              onChange={(next) => setSound({ restore: next })}
             />
           </div>
         </SoundSection>

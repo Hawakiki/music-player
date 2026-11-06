@@ -1,4 +1,4 @@
-import { createFilter, dbToGain } from './audio-nodes'
+import { createButterworth, createFilter, dbToGain } from './audio-nodes'
 
 const CURVE_SIZE = 4097
 const CURVE_SLOPE = 1.6
@@ -10,8 +10,6 @@ const CLEAN_HEADROOM = 16
 const BASS_CUT_DB = 18
 const BASS_CUT_FREQUENCY = 200
 const HARMONICS_CUTOFF = 120
-/** highpass의 Q는 dB 단위라서 버터워스 값이 0.707이 아니라 -3.01이다. */
-const BUTTERWORTH_Q_DB = -3.01
 
 const WARMTH_FREQUENCY = 300
 const WARMTH_Q = 0.8
@@ -62,12 +60,6 @@ function createGain(context: BaseAudioContext, value: number) {
   return gain
 }
 
-function createHarmonicsFilter(context: BaseAudioContext) {
-  const filter = createFilter(context, 'highpass', HARMONICS_CUTOFF)
-  filter.Q.value = BUTTERWORTH_Q_DB
-  return filter
-}
-
 /**
  * 곡선을 지난 소리에서 곡선에 넣은 소리를 빼면 곡선이 더한 왜곡만 남는다.
  * 그 왜곡의 저역을 없애고 원음에 더한다. 저역까지 두면 곡에 없던 저음이 생겨서 윙윙거린다.
@@ -111,8 +103,8 @@ export function createTubeStage(context: BaseAudioContext): TubeStage {
   clean.connect(mixed)
   residual
     .connect(harmonics)
-    .connect(createHarmonicsFilter(context))
-    .connect(createHarmonicsFilter(context))
+    .connect(createButterworth(context, 'highpass', HARMONICS_CUTOFF))
+    .connect(createButterworth(context, 'highpass', HARMONICS_CUTOFF))
     .connect(mixed)
 
   const warmth = createFilter(context, 'peaking', WARMTH_FREQUENCY)

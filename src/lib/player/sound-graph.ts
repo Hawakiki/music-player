@@ -1,5 +1,15 @@
 import { audio } from './audio'
 import { createFilter, dbToGain } from './audio-nodes'
+import {
+  RESTORE_INTERVAL_MS,
+  applyRestore,
+  createRestoreStage,
+  measureRestore,
+  resetRestore,
+  type RestoreLevel,
+  type RestoreStage,
+  type RestoreStatus,
+} from './restore-stage'
 import { applyTube, createTubeStage, type TubeMode, type TubeStage } from './tube-stage'
 
 export const EQ_BANDS = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
@@ -60,6 +70,7 @@ export interface SoundSettings extends EqValues {
   tubeMode: TubeMode
   vinyl: VinylLevel
   phase: PhaseLevel
+  restore: RestoreLevel
   limiter: boolean
   /** 음량 평준화로 지금 곡에 줄 값. */
   trackGainDb: number
@@ -81,6 +92,7 @@ interface SoundGraph {
   context: AudioContext
   source: MediaElementAudioSourceNode
   input: GainNode
+  restore: RestoreStage
   preamp: GainNode
   bands: BiquadFilterNode[]
   bass: BiquadFilterNode
@@ -103,6 +115,8 @@ let settings: SoundSettings | null = null
 let currentRoute: string | null = null
 let probedSampleRate: number | null = null
 let vinylNoiseStarted = false
+let restoreTimer: number | null = null
+let restoreListener: (status: RestoreStatus) => void = () => {}
 
 /** DynamicsCompressorNode가 자동으로 올리는 음량. 되돌려야 켜기만 해도 소리가 커지지 않는다. */
 function getLimiterMakeup() {
@@ -125,6 +139,7 @@ export function isProcessing(next: SoundSettings) {
     next.tube > 0 ||
     next.vinyl !== 'off' ||
     next.phase !== 'off' ||
+    next.restore !== 'off' ||
     next.trackGainDb !== 0
   )
 }
@@ -200,6 +215,16 @@ function createGraph(): SoundGraph {
   input.channelCountMode = 'explicit'
   input.channelInterpretation = 'speakers'
 
+  // 채운 고역에도 이퀄라이저와 효과가 걸리도록 맨 앞에 둔다.
+  const restore = createRestoreStage(context)
+  input.connect(restore.input)
+
+  // 곡을 고른 뒤 파일을 읽는 동안에는 앞 곡이 계속 나온다. 소리가 실제로 바뀔 때 다시 잰다.
+  audio.addEventListener('loadstart', () => {
+    resetRestore(restore)
+    restoreListener('analyzing')
+  })
+
   const preamp = context.createGain()
   const bands = EQ_BANDS.map((frequency) => {
     const filter = createFilter(context, 'peaking', frequency)
@@ -209,7 +234,7 @@ function createGraph(): SoundGraph {
   const bass = createFilter(context, 'lowshelf', BASS_FREQUENCY)
   const treble = createFilter(context, 'highshelf', TREBLE_FREQUENCY)
 
-  let previous: AudioNode = input
+  let previous: AudioNode = restore.output
   for (const node of [preamp, ...bands, bass, treble]) {
     previous.connect(node)
     previous = node
@@ -289,6 +314,7 @@ function createGraph(): SoundGraph {
     context,
     source,
     input,
+    restore,
     preamp,
     bands,
     bass,
@@ -344,6 +370,7 @@ function applyValues(current: SoundGraph, next: SoundSettings) {
   const set = (param: AudioParam, value: number) => param.setTargetAtTime(value, now, SMOOTHING_SECONDS)
 
   set(current.input.gain, dbToGain(next.trackGainDb))
+  applyRestore(current.restore, next.restore, set)
   set(current.preamp.gain, next.eqEnabled ? dbToGain(next.preamp) : 1)
   current.bands.forEach((band, index) => set(band.gain, next.eqEnabled ? next.gains[index] : 0))
   set(current.bass.gain, next.bass)
@@ -404,6 +431,23 @@ function applyRoute(current: SoundGraph, next: SoundSettings) {
   }
 }
 
+/** 소리가 나는 동안만 잰다. 타이머가 늦어져도 판단이 늦을 뿐 소리는 끊기지 않는다. */
+function syncRestoreTimer({ restore }: SoundGraph, next: SoundSettings) {
+  const running = next.restore !== 'off' && next.playing && !next.direct
+  if (running === (restoreTimer !== null)) return
+
+  if (restoreTimer !== null) {
+    window.clearInterval(restoreTimer)
+    restoreTimer = null
+    return
+  }
+  restoreTimer = window.setInterval(() => restoreListener(measureRestore(restore)), RESTORE_INTERVAL_MS)
+}
+
+export function onRestoreStatus(listener: (status: RestoreStatus) => void) {
+  restoreListener = listener
+}
+
 /**
  * 한 번 그래프로 연결한 audio 요소는 되돌릴 수 없다. 그래서 처리가 하나도 없는 사람은
  * 끝까지 그래프 없이 재생하고, 켠 뒤에는 새로고침 전까지 그래프를 유지한다.
@@ -419,6 +463,7 @@ export function updateSound(next: SoundSettings) {
 
   applyValues(graph, next)
   applyRoute(graph, next)
+  syncRestoreTimer(graph, next)
   void graph.context.resume()
 }
 
