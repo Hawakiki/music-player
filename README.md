@@ -11,3 +11,7 @@ npm run preview  # 빌드 결과 확인
 ```
 
 UI 컴포넌트 추가: `npx shadcn@latest add <component>`
+
+## 배포
+
+`main`에 push하면 GitHub Actions가 빌드해서 GitHub Pages에 올린다.
