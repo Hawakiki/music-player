@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { AlbumPage } from '@/pages/AlbumPage'
@@ -9,16 +10,30 @@ import { FolderPage } from '@/pages/FolderPage'
 import { FoldersPage } from '@/pages/FoldersPage'
 import { GenrePage } from '@/pages/GenrePage'
 import { GenresPage } from '@/pages/GenresPage'
+import { PlaylistPage } from '@/pages/PlaylistPage'
 import { PlaylistsPage } from '@/pages/PlaylistsPage'
 import { QueuePage } from '@/pages/QueuePage'
 import { RecentPage } from '@/pages/RecentPage'
 import { SearchPage } from '@/pages/SearchPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 
+const NowPlayingPage = lazy(async () => {
+  const { NowPlayingPage: Page } = await import('@/pages/NowPlayingPage')
+  return { default: Page }
+})
+
 function App() {
   return (
     <HashRouter>
       <Routes>
+        <Route
+          path="/now-playing"
+          element={
+            <Suspense>
+              <NowPlayingPage />
+            </Suspense>
+          }
+        />
         <Route element={<AppShell />}>
           <Route path="/folders" element={<FoldersPage />} />
           <Route path="/folders/:id" element={<FolderPage />} />
@@ -29,6 +44,7 @@ function App() {
           <Route path="/genres" element={<GenresPage />} />
           <Route path="/genres/:id" element={<GenrePage />} />
           <Route path="/playlists" element={<PlaylistsPage />} />
+          <Route path="/playlists/:id" element={<PlaylistPage />} />
           <Route path="/favorites" element={<FavoritesPage />} />
           <Route path="/recent" element={<RecentPage />} />
           <Route path="/search" element={<SearchPage />} />

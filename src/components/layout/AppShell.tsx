@@ -7,6 +7,7 @@ import { NoticeToast } from '@/components/layout/NoticeToast'
 import { PlayerBar } from '@/components/layout/PlayerBar'
 import { QueuePanel } from '@/components/layout/QueuePanel'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { CreatePlaylistDialog } from '@/components/playlists/CreatePlaylistDialog'
 import { usePlayerShortcuts } from '@/hooks/use-player-shortcuts'
 
 const MAX_RESTORE_FRAMES = 30
@@ -72,6 +73,7 @@ export function AppShell() {
       <MobileNav />
       <NoticeToast />
       <DropOverlay />
+      <CreatePlaylistDialog />
     </div>
   )
 }

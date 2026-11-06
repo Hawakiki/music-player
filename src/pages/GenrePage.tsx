@@ -17,7 +17,7 @@ export function GenrePage() {
   return (
     <>
       <PageHeader title={genre.name} count={`${formatCount(genre.tracks.length)}곡`} />
-      <PlayButtons tracks={genre.tracks} />
+      <PlayButtons tracks={genre.tracks} label={genre.name} />
       <div className="mt-4">
         <TrackList tracks={genre.tracks} />
       </div>

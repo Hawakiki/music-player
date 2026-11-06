@@ -3,6 +3,7 @@ import { loadArtUrl } from '@/hooks/use-art-url'
 import { isErrorNamed } from '@/lib/folders/access'
 import type { TrackFile } from '@/lib/folders/types'
 import { audio, clearSource, hasSource, setSource } from '@/lib/player/audio'
+import { prepareEqForPlayback } from '@/lib/player/eq'
 import {
   loadPosition,
   loadQueue,
@@ -157,6 +158,7 @@ async function loadTrack(index: number, options: { autoplay: boolean; startAt?: 
 }
 
 function startAudio() {
+  prepareEqForPlayback()
   audio.play().catch((error: unknown) => {
     // 재생할 수 없는 파일은 error 이벤트에서 처리한다.
     if (isErrorNamed(error, 'NotAllowedError')) set({ isPlaying: false })
@@ -275,16 +277,33 @@ export function toggleMute() {
   set({ muted: !get().muted })
 }
 
-export function addToQueue(track: TrackFile) {
+function describeTracks(tracks: TrackFile[]) {
+  if (tracks.length > 1) return `${tracks.length.toLocaleString('ko-KR')}곡`
+  return trackTitle(tracks[0], useMetadata.getState().items[tracks[0].id])
+}
+
+export function addToQueue(tracks: TrackFile[]) {
   const { queue } = get()
   if (queue.length === 0) {
-    playList([track])
+    playList(tracks)
     return
   }
 
-  sourceQueue = [...sourceQueue, track]
-  set({ queue: [...queue, track] })
-  notify(`대기열에 추가했습니다: ${trackTitle(track, useMetadata.getState().items[track.id])}`)
+  sourceQueue = [...sourceQueue, ...tracks]
+  set({ queue: [...queue, ...tracks] })
+  notify(`대기열에 추가했습니다: ${describeTracks(tracks)}`)
+}
+
+export function playNextInQueue(tracks: TrackFile[]) {
+  const { queue, index } = get()
+  if (queue.length === 0) {
+    playList(tracks)
+    return
+  }
+
+  sourceQueue = [...sourceQueue, ...tracks]
+  set({ queue: queue.toSpliced(index + 1, 0, ...tracks) })
+  notify(`다음에 재생합니다: ${describeTracks(tracks)}`)
 }
 
 function withoutTrack(list: TrackFile[], track: TrackFile) {

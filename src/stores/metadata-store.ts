@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { deleteFolderRecords, deleteTrackMeta, loadTrackMeta, pruneArt, saveTrackMeta } from '@/lib/db'
 import type { TrackFile } from '@/lib/folders/types'
-import type { ReadJob, ReadResult, TrackMeta } from '@/lib/metadata/types'
+import type { ReadJob, ReadResult, TrackMeta, WorkerResult } from '@/lib/metadata/types'
 import { notify, useLibrary } from '@/stores/library-store'
 
 const CONCURRENCY = 4
@@ -26,6 +26,7 @@ const pending = new Map<string, TrackFile>()
 const urgent = new Map<string, TrackFile>()
 const active = new Map<string, TrackFile>()
 const counted = new Set<string>()
+const coverRequests = new Map<string, (image: Blob | null) => void>()
 let finished: TrackMeta[] = []
 let finishedCount = 0
 let cacheLoaded = false
@@ -35,7 +36,14 @@ function getWorker() {
   if (worker) return worker
 
   worker = new Worker(new URL('../workers/metadata.worker.ts', import.meta.url), { type: 'module' })
-  worker.addEventListener('message', (event: MessageEvent<ReadResult>) => onResult(event.data))
+  worker.addEventListener('message', ({ data }: MessageEvent<WorkerResult>) => {
+    if (data.kind === 'cover') {
+      coverRequests.get(data.id)?.(data.image)
+      coverRequests.delete(data.id)
+    } else {
+      onResult(data)
+    }
+  })
   worker.addEventListener('error', () => {
     workerFailed = true
     pending.clear()
@@ -79,6 +87,7 @@ function pump() {
 
     const known = get().items[track.id]
     const job: ReadJob = {
+      kind: 'read',
       id: track.id,
       source: track.source,
       cover: track.cover,
@@ -144,6 +153,17 @@ function enqueue(tracks: TrackFile[]) {
 
   if (added > 0) set((state) => ({ total: state.total + added }))
   pump()
+}
+
+/** 전체 화면에 쓸 원본 표지를 읽는다. 없으면 null이다. */
+export function requestCover({ id, source, cover }: TrackFile) {
+  if (workerFailed) return Promise.resolve(null)
+
+  return new Promise<Blob | null>((resolve) => {
+    coverRequests.get(id)?.(null)
+    coverRequests.set(id, resolve)
+    getWorker().postMessage({ kind: 'cover', id, source, cover })
+  })
 }
 
 /** 재생을 시작한 곡은 줄을 서지 않고 먼저 읽는다. */

@@ -24,7 +24,7 @@ export function ArtistPage() {
             앨범 {formatCount(artist.albums.length)}개, {formatCount(artist.tracks.length)}곡
           </p>
           <div className="mt-3">
-            <PlayButtons tracks={artist.tracks} />
+            <PlayButtons tracks={artist.tracks} label={artist.name} />
           </div>
         </div>
       </div>

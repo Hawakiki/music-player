@@ -1,6 +1,7 @@
-import { readTrack } from '@/lib/metadata/read'
-import type { ReadJob } from '@/lib/metadata/types'
+import { readFullCover, readTrack } from '@/lib/metadata/read'
+import type { WorkerJob } from '@/lib/metadata/types'
 
-self.addEventListener('message', (event: MessageEvent<ReadJob>) => {
-  void readTrack(event.data).then((result) => self.postMessage(result))
+self.addEventListener('message', ({ data }: MessageEvent<WorkerJob>) => {
+  const reading = data.kind === 'cover' ? readFullCover(data) : readTrack(data)
+  void reading.then((result) => self.postMessage(result))
 })

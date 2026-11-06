@@ -1,7 +1,7 @@
 import { parseBlob, selectCover, type IAudioMetadata } from 'music-metadata'
 import { hasArt, saveArt } from '@/lib/db'
 import type { TrackCover } from '@/lib/folders/types'
-import type { ReadJob, ReadResult, ReadTags } from './types'
+import type { CoverJob, CoverResult, ReadJob, ReadResult, ReadTags } from './types'
 
 const THUMBNAIL_SIZE = 384
 const THUMBNAIL_QUALITY = 0.85
@@ -96,6 +96,28 @@ async function readEmbeddedArt(metadata: IAudioMetadata) {
   if (!picture) return undefined
 
   return storeArt(new Blob([picture.data as Uint8Array<ArrayBuffer>], { type: picture.format }))
+}
+
+/** 전체 화면에 쓸 원본 표지를 읽는다. */
+export async function readFullCover({ id, source, cover }: CoverJob): Promise<CoverResult> {
+  try {
+    const file = source instanceof File ? source : await source.getFile()
+    const picture = selectCover((await parseBlob(file)).common.picture)
+    if (picture) {
+      const image = new Blob([picture.data as Uint8Array<ArrayBuffer>], { type: picture.format })
+      return { id, kind: 'cover', image }
+    }
+  } catch {
+    // 태그를 못 읽어도 폴더 이미지는 쓸 수 있다.
+  }
+
+  try {
+    if (!cover) return { id, kind: 'cover', image: null }
+    const image = cover.source instanceof File ? cover.source : await cover.source.getFile()
+    return { id, kind: 'cover', image }
+  } catch {
+    return { id, kind: 'cover', image: null }
+  }
 }
 
 export async function readTrack({ id, source, cover, known }: ReadJob): Promise<ReadResult> {

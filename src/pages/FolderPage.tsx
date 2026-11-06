@@ -33,7 +33,7 @@ export function FolderPage() {
       {tracks && tracks.length > 0 && (
         <>
           <div className="mt-4">
-            <PlayButtons tracks={tracks} />
+            <PlayButtons tracks={tracks} label={folder.name} />
           </div>
           <div className="mt-4">
             <TrackList tracks={tracks} />

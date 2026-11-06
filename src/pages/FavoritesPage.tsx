@@ -25,7 +25,7 @@ export function FavoritesPage() {
       <PageHeader title="즐겨찾기" count={tracks.length > 0 ? `${formatCount(tracks.length)}곡` : undefined} />
       {tracks.length > 0 ? (
         <>
-          <PlayButtons tracks={tracks} />
+          <PlayButtons tracks={tracks} label="즐겨찾기" />
           <div className="mt-4">
             <TrackList tracks={tracks} />
           </div>

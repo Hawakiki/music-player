@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
 import type { TrackMeta } from '@/lib/metadata/types'
+import type { Playlist } from '@/lib/playlists/types'
 
 export interface StoredFolder {
   id: string
@@ -14,17 +15,27 @@ export interface StoredFavorite {
   addedAt: number
 }
 
+export interface StoredWave {
+  id: string
+  folderId: string
+  size: number
+  lastModified: number
+  peaks: Uint8Array
+}
+
 interface MusicPlayerDB extends DBSchema {
   folders: { key: string; value: StoredFolder }
   tracks: { key: string; value: TrackMeta; indexes: { folderId: string } }
   art: { key: string; value: Blob }
   favorites: { key: string; value: StoredFavorite; indexes: { folderId: string } }
+  waves: { key: string; value: StoredWave; indexes: { folderId: string } }
+  playlists: { key: string; value: Playlist }
 }
 
 let connection: Promise<IDBPDatabase<MusicPlayerDB>> | undefined
 
 function getDb() {
-  connection ??= openDB<MusicPlayerDB>('music-player', 2, {
+  connection ??= openDB<MusicPlayerDB>('music-player', 3, {
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('folders', { keyPath: 'id' })
@@ -33,6 +44,10 @@ function getDb() {
         db.createObjectStore('tracks', { keyPath: 'id' }).createIndex('folderId', 'folderId')
         db.createObjectStore('art')
         db.createObjectStore('favorites', { keyPath: 'id' }).createIndex('folderId', 'folderId')
+      }
+      if (oldVersion < 3) {
+        db.createObjectStore('waves', { keyPath: 'id' }).createIndex('folderId', 'folderId')
+        db.createObjectStore('playlists', { keyPath: 'id' })
       }
     },
     // 다른 탭이 새 버전으로 올리려 할 때 막지 않도록 연결을 닫는다.
@@ -71,19 +86,22 @@ export async function deleteTrackMeta(ids: string[]) {
   await Promise.all([...ids.map((id) => transaction.store.delete(id)), transaction.done])
 }
 
-/** 폴더를 제거할 때 그 폴더의 곡 정보와 즐겨찾기를 지운다. */
+/** 폴더를 제거할 때 그 폴더의 곡 정보, 즐겨찾기, 파형을 지운다. */
 export async function deleteFolderRecords(folderId: string) {
-  const transaction = (await getDb()).transaction(['tracks', 'favorites'], 'readwrite')
+  const transaction = (await getDb()).transaction(['tracks', 'favorites', 'waves'], 'readwrite')
   const tracks = transaction.objectStore('tracks')
   const favorites = transaction.objectStore('favorites')
+  const waves = transaction.objectStore('waves')
 
-  const [trackIds, favoriteIds] = await Promise.all([
+  const [trackIds, favoriteIds, waveIds] = await Promise.all([
     tracks.index('folderId').getAllKeys(folderId),
     favorites.index('folderId').getAllKeys(folderId),
+    waves.index('folderId').getAllKeys(folderId),
   ])
   await Promise.all([
     ...trackIds.map((id) => tracks.delete(id)),
     ...favoriteIds.map((id) => favorites.delete(id)),
+    ...waveIds.map((id) => waves.delete(id)),
     transaction.done,
   ])
 }
@@ -107,6 +125,26 @@ export async function pruneArt(used: Set<string>) {
 
   const transaction = db.transaction('art', 'readwrite')
   await Promise.all([...unused.map((id) => transaction.store.delete(id)), transaction.done])
+}
+
+export async function loadWave(id: string) {
+  return (await getDb()).get('waves', id)
+}
+
+export async function saveWave(wave: StoredWave) {
+  await (await getDb()).put('waves', wave)
+}
+
+export async function loadPlaylists() {
+  return (await getDb()).getAll('playlists')
+}
+
+export async function savePlaylist(playlist: Playlist) {
+  await (await getDb()).put('playlists', playlist)
+}
+
+export async function deletePlaylist(id: string) {
+  await (await getDb()).delete('playlists', id)
 }
 
 export async function loadFavorites() {

@@ -17,7 +17,12 @@ const REPEAT_LABELS: Record<RepeatMode, string> = {
   one: '한 곡 반복',
 }
 
-export function TransportControls() {
+interface TransportControlsProps {
+  /** 전체 화면 재생용. 버튼이 크고 휴대폰에서도 모두 보인다. */
+  large?: boolean
+}
+
+export function TransportControls({ large = false }: TransportControlsProps) {
   const hasTrack = usePlayer((state) => state.index >= 0)
   const isPlaying = usePlayer((state) => state.isPlaying)
   const shuffle = usePlayer((state) => state.shuffle)
@@ -26,17 +31,20 @@ export function TransportControls() {
     (state) => state.index >= 0 && (state.index + 1 < state.queue.length || state.repeat === 'all'),
   )
 
+  const compactOnly = large ? '' : 'hidden md:inline-flex'
+  const icon = large ? 'size-6' : 'size-5'
+
   return (
-    <div className="flex items-center gap-2">
+    <div className={cn('flex items-center', large ? 'gap-4' : 'gap-2')}>
       <Button
         variant="ghost"
         size="icon-lg"
         aria-label="셔플"
         aria-pressed={shuffle}
         onClick={toggleShuffle}
-        className={cn('hidden md:inline-flex', shuffle && 'text-point hover:text-point')}
+        className={cn(compactOnly, shuffle && 'text-point hover:text-point')}
       >
-        <Shuffle className="size-5" />
+        <Shuffle className={icon} />
       </Button>
       <Button
         variant="ghost"
@@ -44,25 +52,25 @@ export function TransportControls() {
         aria-label="이전 곡"
         disabled={!hasTrack}
         onClick={playPrevious}
-        className="hidden md:inline-flex"
+        className={compactOnly}
       >
-        <SkipBack className="size-5" fill="currentColor" />
+        <SkipBack className={icon} fill="currentColor" />
       </Button>
       <Button
         size="icon-lg"
         aria-label={isPlaying ? '일시정지' : '재생'}
         disabled={!hasTrack}
         onClick={togglePlay}
-        className="rounded-full"
+        className={cn('rounded-full', large && 'size-14')}
       >
         {isPlaying ? (
-          <Pause className="size-4.5" fill="currentColor" />
+          <Pause className={large ? 'size-6' : 'size-4.5'} fill="currentColor" />
         ) : (
-          <Play className="size-4.5" fill="currentColor" />
+          <Play className={large ? 'size-6' : 'size-4.5'} fill="currentColor" />
         )}
       </Button>
       <Button variant="ghost" size="icon-lg" aria-label="다음 곡" disabled={!canGoNext} onClick={playNext}>
-        <SkipForward className="size-5" fill="currentColor" />
+        <SkipForward className={icon} fill="currentColor" />
       </Button>
       <Button
         variant="ghost"
@@ -70,9 +78,9 @@ export function TransportControls() {
         aria-label={REPEAT_LABELS[repeat]}
         aria-pressed={repeat !== 'off'}
         onClick={cycleRepeat}
-        className={cn('hidden md:inline-flex', repeat !== 'off' && 'text-point hover:text-point')}
+        className={cn(compactOnly, repeat !== 'off' && 'text-point hover:text-point')}
       >
-        {repeat === 'one' ? <Repeat1 className="size-5" /> : <Repeat className="size-5" />}
+        {repeat === 'one' ? <Repeat1 className={icon} /> : <Repeat className={icon} />}
       </Button>
     </div>
   )

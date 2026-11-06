@@ -27,6 +27,7 @@ export interface TrackMeta extends ReadTags {
 }
 
 export interface ReadJob {
+  kind: 'read'
   id: string
   source: TrackFile['source']
   cover?: TrackCover
@@ -34,7 +35,24 @@ export interface ReadJob {
   known?: { size: number; lastModified: number }
 }
 
+export interface CoverJob {
+  kind: 'cover'
+  id: string
+  source: TrackFile['source']
+  cover?: TrackCover
+}
+
+export type WorkerJob = ReadJob | CoverJob
+
 export type ReadResult =
   | { id: string; kind: 'read'; tags: ReadTags }
   | { id: string; kind: 'unchanged' }
   | { id: string; kind: 'unavailable' }
+
+export interface CoverResult {
+  id: string
+  kind: 'cover'
+  image: Blob | null
+}
+
+export type WorkerResult = ReadResult | CoverResult

@@ -35,7 +35,7 @@ export function AlbumPage() {
             )}
           </div>
           <div className="mt-4">
-            <PlayButtons tracks={album.tracks} />
+            <PlayButtons tracks={album.tracks} label={album.title} />
           </div>
         </div>
       </div>

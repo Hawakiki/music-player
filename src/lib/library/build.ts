@@ -45,10 +45,18 @@ export interface LibraryIndex {
   genreById: Map<string, Genre>
   albumByTrack: Map<string, Album>
   trackById: Map<string, TrackFile>
+  /** `폴더 이름\0경로`로 찾는다. */
+  trackByLocation: Map<string, TrackFile>
+  /** 파일을 옮겼을 때 태그로 찾는다. */
+  trackByTags: Map<string, TrackFile>
 }
 
 function normalize(value: string) {
   return value.trim().toLocaleLowerCase('ko')
+}
+
+export function getTagKey(title: string, artist = '', album = '') {
+  return [title, artist, album].map(normalize).join('\0')
 }
 
 /** 주소에 쓸 짧고 항상 같은 id를 만든다 (cyrb53). */
@@ -221,6 +229,15 @@ function buildLibrary(
     genreById: new Map(genres.map((genre) => [genre.id, genre])),
     albumByTrack: new Map(albums.flatMap((album) => album.tracks.map((track) => [track.id, album]))),
     trackById: new Map(allTracks.map((track) => [track.id, track])),
+    trackByLocation: new Map(
+      allTracks.map((track) => [`${folderNames.get(track.folderId)}\0${track.path}`, track]),
+    ),
+    trackByTags: new Map(
+      readTracks.flatMap((track) => {
+        const { title, artist, album } = items[track.id]
+        return title ? [[getTagKey(title, artist, album), track] as const] : []
+      }),
+    ),
   }
 }
 
