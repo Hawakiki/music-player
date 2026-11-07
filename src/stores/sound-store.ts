@@ -10,6 +10,7 @@ import {
   type VinylLevel,
 } from '@/lib/player/sound-graph'
 import type { RestoreLevel, RestoreStatus } from '@/lib/player/restore-stage'
+import { DEFAULT_SCOPE_SLOTS, isScopeSlots, type ScopeModuleId, type ScopeSlots } from '@/lib/player/scope'
 import type { TubeMode } from '@/lib/player/tube-stage'
 import { useEq } from '@/stores/eq-store'
 import { notify } from '@/stores/library-store'
@@ -42,6 +43,7 @@ interface SoundState {
   coverView: CoverView
   vuReference: VuReference
   lpSpeed: LpSpeed
+  scopeSlots: ScopeSlots
   /** 원음 듣기. 잠깐 비교하려고 쓰는 값이라 저장하지 않는다. */
   direct: boolean
 }
@@ -63,6 +65,7 @@ const DEFAULTS: SoundState = {
   coverView: 'art',
   vuReference: '-10',
   lpSpeed: '33',
+  scopeSlots: DEFAULT_SCOPE_SLOTS,
   direct: false,
 }
 
@@ -96,6 +99,7 @@ function load(): SoundState {
       coverView,
       vuReference,
       lpSpeed,
+      scopeSlots,
     } = stored as Record<string, unknown>
     return {
       bass: inRange(bass, -12, 12, 0),
@@ -115,6 +119,7 @@ function load(): SoundState {
         coverView === 'vu' || coverView === 'lp' || coverView === 'cassette' || coverView === 'scope' ? coverView : 'art',
       vuReference: vuReference === '-18' || vuReference === '-14' ? vuReference : '-10',
       lpSpeed: lpSpeed === '45' ? '45' : '33',
+      scopeSlots: isScopeSlots(scopeSlots) ? scopeSlots : DEFAULT_SCOPE_SLOTS,
       direct: false,
     }
   } catch {
@@ -129,6 +134,21 @@ export const useRestoreStatus = create<{ status: RestoreStatus }>(() => ({ statu
 
 export function setSound(patch: Partial<SoundState>) {
   useSound.setState(patch)
+}
+
+/** 다른 칸에 있는 모듈을 고르면 두 칸이 자리를 바꾼다. */
+export function chooseScopeModule(slot: number, module: ScopeModuleId) {
+  const slots: ScopeSlots = [...useSound.getState().scopeSlots]
+  const other = slots.indexOf(module)
+  if (other === slot) return
+
+  if (other >= 0) slots[other] = slots[slot]
+  slots[slot] = module
+  useSound.setState({ scopeSlots: slots })
+}
+
+export function resetScopeSlots() {
+  useSound.setState({ scopeSlots: DEFAULT_SCOPE_SLOTS })
 }
 
 /** 소리 조절만 되돌린다. 설정 화면의 값은 그대로 둔다. */

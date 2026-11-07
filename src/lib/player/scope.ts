@@ -1,3 +1,18 @@
+export const SCOPE_MODULES = [
+  { id: 'spectrogram', label: '스펙트로그램' },
+  { id: 'spectrum', label: '스펙트럼' },
+  { id: 'level', label: '레벨' },
+  { id: 'vectorscope', label: '벡터스코프' },
+  { id: 'stereo', label: '위상과 좌우' },
+  { id: 'oscilloscope', label: '오실로스코프' },
+  { id: 'vu', label: 'VU' },
+] as const
+
+export type ScopeModuleId = (typeof SCOPE_MODULES)[number]['id']
+export type ScopeSlots = [ScopeModuleId, ScopeModuleId, ScopeModuleId]
+
+export const DEFAULT_SCOPE_SLOTS: ScopeSlots = ['spectrogram', 'vectorscope', 'level']
+
 export const SPECTRUM_SIZE = 4096
 export const COLUMN_SECONDS = 1 / 40
 
@@ -6,6 +21,9 @@ const MAX_HZ = 22000
 const FLOOR_DB = -105
 const CEILING_DB = -25
 const SILENCE = 1e-7
+const NOTE_MIN_HZ = 40
+const NOTE_MAX_HZ = 8000
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 /** 포인트 파랑 하나의 명도 변화다. 큰 소리만 밝아져서 눈이 편하다. */
 const COLOR_STOPS: [number, [number, number, number]][] = [
@@ -16,8 +34,72 @@ const COLOR_STOPS: [number, [number, number, number]][] = [
   [1, [238, 243, 249]],
 ]
 
+export function isScopeSlots(value: unknown): value is ScopeSlots {
+  if (!Array.isArray(value) || value.length !== 3 || new Set(value).size !== 3) return false
+  return value.every((item) => SCOPE_MODULES.some(({ id }) => id === item))
+}
+
+/** 좌우 파워의 평균. 모노로 합치면 역위상 소리가 지워져서 안 보인다. */
+export function getSpectrumLevels(left: Float32Array, right: Float32Array, output: Float32Array) {
+  for (let bin = 0; bin < output.length; bin += 1) {
+    output[bin] = 10 * Math.log10((10 ** (left[bin] / 10) + 10 ** (right[bin] / 10)) / 2 + 1e-30)
+  }
+}
+
+/** 가장 큰 소리의 주파수. 두 칸 사이의 값은 포물선으로 어림한다. */
+export function findLoudest(levels: Float32Array, binHz: number) {
+  const first = Math.ceil(NOTE_MIN_HZ / binHz)
+  const last = Math.min(Math.floor(NOTE_MAX_HZ / binHz), levels.length - 2)
+
+  let loudest = first
+  for (let bin = first + 1; bin <= last; bin += 1) {
+    if (levels[bin] > levels[loudest]) loudest = bin
+  }
+
+  const db = levels[loudest]
+  const before = levels[loudest - 1]
+  const after = levels[loudest + 1]
+  const curve = before - 2 * db + after
+  const offset = curve === 0 ? 0 : (0.5 * (before - after)) / curve
+  return { hz: (loudest + offset) * binHz, db }
+}
+
+/** A4 = 440Hz 기준의 음 이름과 어긋난 정도(센트). */
+export function getNoteName(hz: number) {
+  const semitones = 12 * Math.log2(hz / 440) + 69
+  const nearest = Math.round(semitones)
+  const cents = Math.round((semitones - nearest) * 100)
+  const octave = Math.floor(nearest / 12) - 1
+  return `${NOTE_NAMES[((nearest % 12) + 12) % 12]}${octave} ${cents >= 0 ? '+' : ''}${cents}¢`
+}
+
 export function getFrequencyPosition(hz: number) {
   return Math.log(hz / MIN_HZ) / Math.log(MAX_HZ / MIN_HZ)
+}
+
+function getFrequencyAt(position: number) {
+  return MIN_HZ * (MAX_HZ / MIN_HZ) ** position
+}
+
+/** 가로축 칸의 경계를 FFT 구간 번호로 구해 둔다. 왼쪽이 낮은 소리다. */
+export function createColumnEdges(width: number, binHz: number, binCount: number) {
+  return Float32Array.from({ length: width + 1 }, (_, x) => Math.min(getFrequencyAt(x / width) / binHz, binCount - 1))
+}
+
+/** 칸이 FFT 구간보다 좁은 저역은 이웃 구간 사이를 이어서 계단이 지지 않게 한다. */
+export function readColumn(levels: Float32Array, low: number, high: number) {
+  if (high - low < 1) {
+    const middle = (low + high) / 2
+    const bin = Math.floor(middle)
+    const next = Math.min(bin + 1, levels.length - 1)
+    return levels[bin] + (levels[next] - levels[bin]) * (middle - bin)
+  }
+
+  let loudest = -Infinity
+  for (let bin = Math.ceil(low); bin <= Math.floor(high); bin += 1) {
+    if (levels[bin] > loudest) loudest = levels[bin]
+  }
+  return loudest
 }
 
 export function createColorTable() {
@@ -41,9 +123,8 @@ export function createRowBins(height: number, binHz: number, binCount: number) {
   const bins = new Uint16Array(height * 2)
 
   for (let row = 0; row < height; row += 1) {
-    const hz = (position: number) => MIN_HZ * (MAX_HZ / MIN_HZ) ** position
-    const low = hz(1 - (row + 1) / height) / binHz
-    const high = hz(1 - row / height) / binHz
+    const low = getFrequencyAt(1 - (row + 1) / height) / binHz
+    const high = getFrequencyAt(1 - row / height) / binHz
     const first = Math.min(Math.round(low), binCount - 1)
     bins[row * 2] = first
     bins[row * 2 + 1] = Math.max(first, Math.min(Math.round(high), binCount - 1))
