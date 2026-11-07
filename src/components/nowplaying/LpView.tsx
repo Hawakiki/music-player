@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { LpVolumeKnob } from '@/components/nowplaying/LpVolumeKnob'
 import { TrackArt } from '@/components/player/TrackArt'
 import { useSpin } from '@/hooks/use-spin'
 import { cn } from '@/lib/utils'
@@ -26,6 +27,11 @@ const PIVOT_Y = 42
 const ARM_LENGTH = 262
 const PIVOT_DISTANCE = Math.hypot(PIVOT_X - DISC_X, PIVOT_Y - DISC_Y)
 const DISC_DIRECTION = Math.atan2(DISC_Y - PIVOT_Y, DISC_X - PIVOT_X)
+
+/** 볼륨 노브는 판과 톤암이 비워 둔 오른쪽 아래 구석에 둔다. */
+const KNOB_X = 364
+const KNOB_Y = 356
+const KNOB_BOX = 72
 
 /** 재생과 일시정지 때 판이 속도를 바꾸는 빠르기. */
 const SPIN_SECONDS = 0.28
@@ -114,7 +120,7 @@ export function LpView({ artId, className }: LpViewProps) {
   useSpin(disc, { turnsPerSecond: isPlaying ? rpm / 60 : 0, degrees: 360, settleSeconds: SPIN_SECONDS })
 
   return (
-    <div role="img" aria-label="LP" className={cn('relative overflow-hidden rounded-lg bg-raised', className)}>
+    <div role="group" aria-label="LP" className={cn('relative overflow-hidden rounded-lg bg-raised', className)}>
       <div
         ref={disc}
         data-disc
@@ -151,6 +157,14 @@ export function LpView({ artId, className }: LpViewProps) {
         <span className="absolute top-1/2 left-1/2 size-[2.2%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-raised" />
       </div>
       <Tonearm />
+      <LpVolumeKnob
+        style={{
+          left: percent(KNOB_X - KNOB_BOX / 2),
+          top: percent(KNOB_Y - KNOB_BOX / 2),
+          width: percent(KNOB_BOX),
+          height: percent(KNOB_BOX),
+        }}
+      />
     </div>
   )
 }

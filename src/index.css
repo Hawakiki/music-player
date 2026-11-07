@@ -67,6 +67,11 @@
   --tape: #2b2e32;
   --tint-l: 0.9;
   --tint-c: 0.035;
+  --knob-skirt: #9ca2a8;
+  --knob-ridge: #868c93;
+  --knob-face: #d9dce0;
+  --knob-light: #f5f6f7;
+  --knob-mark: #3a3e44;
 }
 
 /* 블랙 테마 */
@@ -90,6 +95,11 @@
   --tape: #4a4f56;
   --tint-l: 0.3;
   --tint-c: 0.05;
+  --knob-skirt: #3b3f45;
+  --knob-ridge: #2a2d32;
+  --knob-face: #8e949b;
+  --knob-light: #c3c7cc;
+  --knob-mark: #1a1c1f;
 }
 
 @layer base {
