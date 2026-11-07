@@ -1,5 +1,5 @@
 import type { MusicFolder, TrackFile } from '@/lib/folders/types'
-import { formatLabel } from '@/lib/metadata/format'
+import { formatLabel, isPlayable } from '@/lib/metadata/format'
 import type { TrackMeta } from '@/lib/metadata/types'
 import { trackDirectory } from '@/lib/tracks'
 
@@ -203,7 +203,10 @@ function buildLibrary(
   folders: MusicFolder[],
   items: Record<string, TrackMeta>,
 ): LibraryIndex {
-  const allTracks = Object.values(tracksByFolder).flat()
+  // 태그를 읽어 보니 재생할 수 없는 코덱인 곡은 어디에도 올리지 않는다. 재생목록에서는 못 찾은 곡이 된다.
+  const allTracks = Object.values(tracksByFolder)
+    .flat()
+    .filter((track) => !items[track.id] || isPlayable(items[track.id]))
   const readTracks = allTracks.filter((track) => items[track.id])
   const folderNames = new Map(folders.map((folder) => [folder.id, folder.name]))
   const compilations = findCompilations(readTracks, items)

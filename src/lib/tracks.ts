@@ -1,6 +1,11 @@
 import type { TrackFile } from '@/lib/folders/types'
 import type { TrackMeta } from '@/lib/metadata/types'
 
+/** 소문자 확장자. 점이 없으면 이름 전체가 나온다. */
+export function getExtension(name: string) {
+  return name.slice(name.lastIndexOf('.') + 1).toLowerCase()
+}
+
 /** 태그가 없으면 파일 이름을 제목으로 쓴다. */
 export function trackTitle(track: TrackFile, meta?: TrackMeta) {
   if (meta?.title) return meta.title

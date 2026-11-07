@@ -1,7 +1,8 @@
+import { getExtension } from '@/lib/tracks'
 import type { SessionFile, TrackCover, TrackFile } from './types'
 
 // 파일 이름으로만 고른다. 실제로 재생되는지는 재생할 때 확인한다.
-const AUDIO_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'mp3', 'oga', 'ogg', 'opus', 'wav', 'weba'])
+const AUDIO_EXTENSIONS = new Set(['aac', 'flac', 'm4a', 'm4b', 'mka', 'mp3', 'oga', 'ogg', 'opus', 'wav', 'weba'])
 const UNSUPPORTED_EXTENSIONS = new Set(['aif', 'aiff', 'ape', 'dff', 'dsf', 'tak', 'wma', 'wv'])
 
 const IMAGE_EXTENSIONS = new Set(['jpeg', 'jpg', 'png', 'webp'])
@@ -19,10 +20,6 @@ export interface ScanResult {
 interface ScanOptions {
   signal: AbortSignal
   onProgress: (trackCount: number) => void
-}
-
-function getExtension(name: string) {
-  return name.slice(name.lastIndexOf('.') + 1).toLowerCase()
 }
 
 function isCoverFile(name: string) {

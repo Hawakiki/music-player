@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { loadArtUrl } from '@/hooks/use-art-url'
 import { isErrorNamed } from '@/lib/folders/access'
 import type { TrackFile } from '@/lib/folders/types'
+import { isPlayable } from '@/lib/metadata/format'
 import { audio, clearSource, hasSource, setSource } from '@/lib/player/audio'
 import { prepareSoundForPlayback } from '@/lib/player/sound-graph'
 import {
@@ -354,7 +355,14 @@ function tryRestore() {
   const { folders, tracks } = useLibrary.getState()
   if (folders.some((folder) => folder.status === 'scanning')) return
 
-  const byId = new Map(Object.values(tracks).flat().map((track) => [track.id, track]))
+  // 재생할 수 없는 코덱으로 밝혀진 곡은 되살리지 않는다.
+  const { items } = useMetadata.getState()
+  const byId = new Map(
+    Object.values(tracks)
+      .flat()
+      .filter((track) => !items[track.id] || isPlayable(items[track.id]))
+      .map((track) => [track.id, track]),
+  )
   const { queue: saved, position } = pendingRestore
   const current = byId.get(position.trackId)
   if (!current) return

@@ -112,7 +112,9 @@ function CoverSpot({ track, meta, title }: CoverSpotProps) {
 
   if (view === 'vu') return <VuMeter className={COVER_SIZE} />
   if (view === 'scope') return <ScopeView className={COVER_SIZE} />
-  if (view === 'cassette') return <CassetteView title={title} meta={meta} className={CASSETTE_SIZE} />
+  if (view === 'cassette') {
+    return <CassetteView title={title} fileName={track?.name ?? ''} meta={meta} className={CASSETTE_SIZE} />
+  }
   if (view === 'lp') return <LpView artId={artId} className={COVER_SIZE} />
   return <Cover track={track} artId={artId} />
 }

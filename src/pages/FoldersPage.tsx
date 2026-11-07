@@ -2,10 +2,17 @@ import { Folder, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { FolderActions } from '@/components/folders/FolderActions'
 import { Button } from '@/components/ui/button'
+import { useFolderTracks } from '@/hooks/use-folder-tracks'
 import { canRememberFolders } from '@/lib/folders/access'
 import { describeFolder, isDisconnected } from '@/lib/folders/status'
+import type { MusicFolder } from '@/lib/folders/types'
 import { cn } from '@/lib/utils'
 import { addFolder, useLibrary } from '@/stores/library-store'
+
+function FolderSummary({ folder }: { folder: MusicFolder }) {
+  const { unplayable } = useFolderTracks(folder.id)
+  return <span className="block text-caption text-muted-foreground">{describeFolder(folder, unplayable)}</span>
+}
 
 export function FoldersPage() {
   const folders = useLibrary((state) => state.folders)
@@ -44,7 +51,7 @@ export function FoldersPage() {
                 <Folder className={cn('size-5 shrink-0 text-muted-foreground', isDisconnected(folder) && 'text-faint')} />
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{folder.name}</span>
-                  <span className="block text-caption text-muted-foreground">{describeFolder(folder)}</span>
+                  <FolderSummary folder={folder} />
                 </span>
               </Link>
               <FolderActions folder={folder} />

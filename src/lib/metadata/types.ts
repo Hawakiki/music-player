@@ -1,7 +1,7 @@
 import type { TrackCover, TrackFile } from '@/lib/folders/types'
 
 /** 읽는 값이 늘면 올린다. 이전 버전으로 저장된 곡은 다시 읽는다. */
-export const META_VERSION = 2
+export const META_VERSION = 3
 
 export interface ReadTags {
   version?: number
@@ -19,6 +19,7 @@ export interface ReadTags {
   bitrate?: number
   sampleRate?: number
   bitsPerSample?: number
+  channels?: number
   codec?: string
   lossless?: boolean
   trackGain?: number

@@ -2,7 +2,7 @@ import { useId, useRef, type ReactNode } from 'react'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import { useSpin } from '@/hooks/use-spin'
 import { formatTime } from '@/lib/format'
-import { formatLabel } from '@/lib/metadata/format'
+import { formatLabel, isUnusualFormat } from '@/lib/metadata/format'
 import type { TrackMeta } from '@/lib/metadata/types'
 import { cn } from '@/lib/utils'
 import { usePlayer } from '@/stores/player-store'
@@ -69,8 +69,12 @@ function getPackRadius(remaining: number) {
   return Math.sqrt(HUB_RADIUS_MM ** 2 + (FULL_RADIUS_MM ** 2 - HUB_RADIUS_MM ** 2) * remaining)
 }
 
-/** 음질을 실제 테이프 규격의 이름으로 찍는다. */
-function getTapeType(meta: TrackMeta | undefined) {
+/**
+ * 음질을 실제 테이프 규격의 이름으로 찍는다. 잠깐 나왔다 사라진 TYPE III(FeCr)는
+ * 재생은 되지만 규격이 흔치 않은 파일에 붙인다.
+ */
+function getTapeType(meta: TrackMeta | undefined, fileName: string) {
+  if (meta && isUnusualFormat(meta, fileName)) return 'TYPE III FeCr POSITION'
   if (!meta?.lossless) return 'TYPE I NORMAL POSITION'
   return (meta.bitsPerSample ?? 0) >= 24 ? 'TYPE IV METAL POSITION' : 'TYPE II CHROME POSITION'
 }
@@ -142,6 +146,8 @@ function StickerCell({ name, caption, size, className, children }: StickerCellPr
 
 interface CassetteViewProps {
   title: string
+  /** 확장자로 테이프 규격을 고를 때 쓴다. */
+  fileName: string
   meta: TrackMeta | undefined
   className: string
 }
@@ -150,7 +156,7 @@ interface CassetteViewProps {
  * 곡마다 뒤집는 대신 오토리버스 덱처럼 다음 곡에서 테이프가 반대로 간다. 릴 크기가 끊기지 않고 이어진다.
  * 휴대폰에서는 카세트를 통째로 눕힌다. 글자도 함께 눕는다.
  */
-export function CassetteView({ title, meta, className }: CassetteViewProps) {
+export function CassetteView({ title, fileName, meta, className }: CassetteViewProps) {
   const isPlaying = usePlayer((player) => player.isPlaying)
   const duration = usePlayer((player) => player.duration)
   const progress = usePlayer((player) =>
@@ -284,7 +290,7 @@ export function CassetteView({ title, meta, className }: CassetteViewProps) {
               {spec.slice(3).join(' ')}
             </text>
             <text data-type x="502" y="268" textAnchor="middle" fontSize="20" letterSpacing="1.5" fill={PRINT}>
-              {getTapeType(meta)}
+              {getTapeType(meta, fileName)}
             </text>
             <text x="502" y="426" textAnchor="middle" fontSize="20" letterSpacing="1.5" fill={PRINT_DIM}>
               {minutes} {minutes === 1 ? 'MINUTE' : 'MINUTES'}

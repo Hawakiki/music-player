@@ -3,6 +3,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import { FolderActions } from '@/components/folders/FolderActions'
 import { PlayButtons } from '@/components/library/PlayButtons'
 import { TrackList } from '@/components/player/TrackList'
+import { useFolderTracks } from '@/hooks/use-folder-tracks'
 import { describeFolder } from '@/lib/folders/status'
 import { useLibrary } from '@/stores/library-store'
 
@@ -10,7 +11,7 @@ export function FolderPage() {
   const { id } = useParams()
   const ready = useLibrary((state) => state.ready)
   const folder = useLibrary((state) => state.folders.find((item) => item.id === id))
-  const tracks = useLibrary((state) => (id ? state.tracks[id] : undefined))
+  const { tracks, unplayable } = useFolderTracks(id)
 
   if (!ready) return null
   if (!folder) return <Navigate to="/folders" replace />
@@ -25,7 +26,7 @@ export function FolderPage() {
       <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="truncate text-title font-semibold">{folder.name}</h1>
-          <p className="text-muted-foreground">{describeFolder(folder)}</p>
+          <p className="text-muted-foreground">{describeFolder(folder, unplayable)}</p>
         </div>
         <FolderActions folder={folder} />
       </div>

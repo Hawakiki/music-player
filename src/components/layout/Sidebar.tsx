@@ -1,6 +1,7 @@
 import { Folder, LoaderCircle, Plus, Settings2, type LucideIcon } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { SearchField } from '@/components/library/SearchField'
+import { useFolderTracks } from '@/hooks/use-folder-tracks'
 import { formatCount, isDisconnected } from '@/lib/folders/status'
 import type { MusicFolder } from '@/lib/folders/types'
 import { LIBRARY_NAV } from '@/lib/navigation'
@@ -37,6 +38,7 @@ interface FolderRowProps {
 
 function FolderRow({ folder }: FolderRowProps) {
   const { id, name, status, trackCount } = folder
+  const { unplayable } = useFolderTracks(id)
   const disconnected = isDisconnected(folder)
 
   return (
@@ -54,7 +56,7 @@ function FolderRow({ folder }: FolderRowProps) {
         )}
         {!disconnected && status !== 'scanning' && (
           <span className="ml-auto text-xs font-normal whitespace-nowrap text-faint">
-            {formatCount(trackCount)}곡
+            {formatCount(trackCount - unplayable)}곡
           </span>
         )}
       </NavLink>

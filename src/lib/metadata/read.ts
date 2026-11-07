@@ -86,6 +86,7 @@ function toTags({ common, format }: IAudioMetadata): Omit<ReadTags, 'size' | 'la
     bitrate: format.bitrate,
     sampleRate: format.sampleRate,
     bitsPerSample: format.bitsPerSample,
+    channels: format.numberOfChannels,
     codec: format.codec ?? format.container,
     lossless: format.lossless,
     trackGain: common.replaygain_track_gain?.dB ?? format.trackGain,
