@@ -23,6 +23,7 @@ const COVER_VIEW_OPTIONS: { value: CoverView; label: string }[] = [
   { value: 'lp', label: 'LP' },
   { value: 'cassette', label: '카세트' },
   { value: 'vu', label: 'VU 미터' },
+  { value: 'scope', label: '측정' },
 ]
 
 const LP_SPEED_OPTIONS: { value: LpSpeed; label: string }[] = [

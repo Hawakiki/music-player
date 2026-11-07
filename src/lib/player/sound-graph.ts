@@ -21,6 +21,8 @@ const BAND_Q = 1.4
 const BASS_FREQUENCY = 120
 const TREBLE_FREQUENCY = 6000
 const SMOOTHING_SECONDS = 0.02
+/** 음악은 지연이 커도 괜찮다. 버퍼가 크면 화면이 꺼져 느린 코어로 내려가도 소리가 끊기지 않는다. */
+const OUTPUT_BUFFER_SECONDS = 0.2
 
 const CROSSFEED_DELAY_SECONDS = 0.0003
 const CROSSFEED_LEVELS = {
@@ -218,7 +220,7 @@ function createVinylNoise(context: AudioContext) {
 }
 
 function createGraph(): SoundGraph {
-  const context = new AudioContext({ latencyHint: 'playback' })
+  const context = new AudioContext({ latencyHint: OUTPUT_BUFFER_SECONDS })
   const source = context.createMediaElementSource(audio)
 
   // 좌우를 나누기 전에 스테레오로 맞춘다. 모노 파일은 그대로 나누면 한쪽이 무음이 된다.

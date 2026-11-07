@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
+import { advanceMeter, createMeterReader, getMeterPeak, getMeterWindow } from '@/lib/player/meter-reader'
 import { getMeterTap } from '@/lib/player/sound-graph'
 import {
   VU_MARKS,
-  createMeterBuffer,
+  VU_WINDOW,
+  getAverageLevel,
   getNeedleTarget,
   isNeedleResting,
   moveNeedle,
-  readChannel,
   vuToPosition,
   type Needle,
 } from '@/lib/player/vu-meter'
@@ -134,18 +135,19 @@ export function VuMeter({ className }: VuMeterProps) {
   const animation = useRef(0)
 
   useEffect(() => {
-    const samples = createMeterBuffer()
+    const reader = createMeterReader()
     lastFrame.current = performance.now()
 
     const drawChannel = (
       side: 'left' | 'right',
       needleLine: SVGLineElement | null,
       peakLight: SVGCircleElement | null,
-      analyser: AnalyserNode | undefined,
+      samples: Float32Array | null,
       now: number,
       seconds: number,
     ) => {
-      const { average, peak } = analyser ? readChannel(analyser, samples) : { average: 0, peak: 0 }
+      const average = samples ? getAverageLevel(getMeterWindow(samples, reader, VU_WINDOW)) : 0
+      const peak = samples ? getMeterPeak(samples, reader) : 0
       moveNeedle(needles.current[side], getNeedleTarget(average, reference), seconds)
       needleLine?.setAttribute(
         'transform',
@@ -163,8 +165,9 @@ export function VuMeter({ className }: VuMeterProps) {
       lastFrame.current = now
 
       const tap = getMeterTap()
-      drawChannel('left', leftNeedle.current, leftPeak.current, tap?.left, now, seconds)
-      drawChannel('right', rightNeedle.current, rightPeak.current, tap?.right, now, seconds)
+      if (tap) advanceMeter(reader, tap, seconds, now)
+      drawChannel('left', leftNeedle.current, leftPeak.current, tap && reader.left, now, seconds)
+      drawChannel('right', rightNeedle.current, rightPeak.current, tap && reader.right, now, seconds)
 
       // 멈춘 뒤 바늘이 내려앉으면 그리기를 쉰다.
       const resting = isNeedleResting(needles.current.left) && isNeedleResting(needles.current.right)

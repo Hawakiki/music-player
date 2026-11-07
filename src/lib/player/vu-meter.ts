@@ -11,7 +11,9 @@ const NEEDLE_MIN = -0.01
 const NEEDLE_MAX = 1.06
 const NEEDLE_REST = 0.002
 
-const ANALYSER_SIZE = 2048
+/** 출력 버퍼 두 개 크기다. 새 덩어리의 앞부분을 그릴 때도 창을 채울 앞 덩어리가 있어야 한다. */
+export const METER_WINDOW = 16384
+export const VU_WINDOW = 2048
 
 export const VU_MARKS = [-20, -10, -7, -5, -3, -2, -1, 0, 1, 2, 3]
 
@@ -39,7 +41,7 @@ export function createMeterTap(context: BaseAudioContext): MeterTap {
 
   const createChannel = () => {
     const analyser = context.createAnalyser()
-    analyser.fftSize = ANALYSER_SIZE
+    analyser.fftSize = METER_WINDOW
     return analyser
   }
   const left = createChannel()
@@ -53,21 +55,10 @@ export function createMeterTap(context: BaseAudioContext): MeterTap {
   return { input, left, right }
 }
 
-export function createMeterBuffer() {
-  return new Float32Array(ANALYSER_SIZE)
-}
-
-export function readChannel(analyser: AnalyserNode, samples: Float32Array<ArrayBuffer>) {
-  analyser.getFloatTimeDomainData(samples)
-
+export function getAverageLevel(samples: Float32Array) {
   let sum = 0
-  let peak = 0
-  for (const sample of samples) {
-    const size = Math.abs(sample)
-    sum += size
-    if (size > peak) peak = size
-  }
-  return { average: (sum / samples.length) * SINE_FORM_FACTOR, peak }
+  for (const sample of samples) sum += Math.abs(sample)
+  return (sum / samples.length) * SINE_FORM_FACTOR
 }
 
 /** 0 VU로 정한 크기(dBFS)를 기준으로 신호 크기를 바늘 위치로 바꾼다. */

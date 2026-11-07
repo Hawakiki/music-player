@@ -21,7 +21,7 @@ const STORAGE_KEY = 'music-player:sound'
 export const LP_RPM: Record<LpSpeed, number> = { '33': 100 / 3, '45': 45 }
 
 export type LoudnessMode = 'off' | 'track' | 'album'
-export type CoverView = 'art' | 'lp' | 'cassette' | 'vu'
+export type CoverView = 'art' | 'lp' | 'cassette' | 'vu' | 'scope'
 export type LpSpeed = '33' | '45'
 export type VuReference = '-18' | '-14' | '-10'
 
@@ -111,7 +111,8 @@ function load(): SoundState {
       restore: toLevel(restore),
       limiter: limiter !== false,
       loudness: loudness === 'track' || loudness === 'album' ? loudness : 'off',
-      coverView: coverView === 'vu' || coverView === 'lp' || coverView === 'cassette' ? coverView : 'art',
+      coverView:
+        coverView === 'vu' || coverView === 'lp' || coverView === 'cassette' || coverView === 'scope' ? coverView : 'art',
       vuReference: vuReference === '-18' || vuReference === '-14' ? vuReference : '-10',
       lpSpeed: lpSpeed === '45' ? '45' : '33',
       direct: false,
@@ -191,7 +192,7 @@ function getSettings(): SoundSettings {
     playing: isPlaying,
     volume: muted ? 0 : volume,
     direct,
-    meter: coverView === 'vu',
+    meter: coverView === 'vu' || coverView === 'scope',
     rpm: LP_RPM[lpSpeed],
   }
 }

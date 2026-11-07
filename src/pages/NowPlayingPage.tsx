@@ -5,6 +5,7 @@ import { NoticeToast } from '@/components/layout/NoticeToast'
 import { CassetteView } from '@/components/nowplaying/CassetteView'
 import { EqPanel } from '@/components/nowplaying/EqPanel'
 import { LpView } from '@/components/nowplaying/LpView'
+import { ScopeView } from '@/components/nowplaying/ScopeView'
 import { SoundPanel } from '@/components/nowplaying/SoundPanel'
 import { TrackInfoPanel } from '@/components/nowplaying/TrackInfoPanel'
 import { VuMeter } from '@/components/nowplaying/VuMeter'
@@ -64,6 +65,7 @@ function CoverSpot({ track, meta, title }: CoverSpotProps) {
   const view = useSound((sound) => sound.coverView)
 
   if (view === 'vu') return <VuMeter className={COVER_SIZE} />
+  if (view === 'scope') return <ScopeView className={COVER_SIZE} />
   if (view === 'cassette') return <CassetteView title={title} meta={meta} className={CASSETTE_SIZE} />
   if (view === 'lp') return <LpView artId={artId} className={COVER_SIZE} />
   return <Cover track={track} artId={artId} />

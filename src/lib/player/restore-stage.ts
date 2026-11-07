@@ -60,6 +60,7 @@ export interface RestoreStage {
   input: GainNode
   output: GainNode
   gate: GainNode
+  layerGate: GainNode
   analyser: AnalyserNode
   sourceLow: BiquadFilterNode[]
   sourceHigh: BiquadFilterNode[]
@@ -148,8 +149,12 @@ export function createRestoreStage(context: BaseAudioContext): RestoreStage {
   const layer = context.createGain()
   layer.gain.value = 0
 
+  // 채울 곳이 없는 곡은 분석만 하고 필터는 쉬게 한다.
+  const layerGate = context.createGain()
+  layerGate.gain.value = 0
+
   let node: AudioNode = gate
-  for (const next of [...sourceLow, ...sourceHigh, ring, ...layerEdge, tilt, layer]) {
+  for (const next of [layerGate, ...sourceLow, ...sourceHigh, ring, ...layerEdge, tilt, layer]) {
     node.connect(next)
     node = next
   }
@@ -160,6 +165,7 @@ export function createRestoreStage(context: BaseAudioContext): RestoreStage {
     input,
     output,
     gate,
+    layerGate,
     analyser,
     sourceLow,
     sourceHigh,
@@ -253,6 +259,7 @@ export function measureRestore(stage: RestoreStage): RestoreStatus {
     moveLayer(stage, found.cutoff)
   }
 
+  smoothParam(stage.layerGate.gain, stage.cutoff === null ? 0 : 1, CUT_SECONDS, context.currentTime)
   smoothParam(stage.layer.gain, getLayerGain(stage), FADE_SECONDS, context.currentTime)
   return getRestoreStatus(stage)
 }
@@ -264,6 +271,7 @@ export function resetRestore(stage: RestoreStage) {
   stage.frames = 0
   stage.settle = SETTLE_TICKS
   stage.cutoff = null
+  smoothParam(stage.layerGate.gain, 0, CUT_SECONDS, stage.input.context.currentTime)
   smoothParam(stage.layer.gain, 0, CUT_SECONDS, stage.input.context.currentTime)
 }
 
@@ -274,5 +282,6 @@ export function applyRestore(
 ) {
   stage.strength = strength
   set(stage.gate.gain, strength === 'off' ? 0 : 1)
+  set(stage.layerGate.gain, strength === 'off' || stage.cutoff === null ? 0 : 1)
   set(stage.layer.gain, getLayerGain(stage))
 }
