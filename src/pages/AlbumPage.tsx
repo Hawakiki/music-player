@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { AlbumGrid } from '@/components/library/AlbumGrid'
 import { PlayButtons } from '@/components/library/PlayButtons'
+import { ArtBackdrop } from '@/components/player/ArtBackdrop'
 import { TrackArt } from '@/components/player/TrackArt'
 import { TrackList } from '@/components/player/TrackList'
 import { useLibraryIndex } from '@/hooks/use-library-index'
@@ -20,7 +21,8 @@ export function AlbumPage() {
   const others = artistById.get(album.artistId)?.albums.filter((item) => item.id !== album.id) ?? []
 
   return (
-    <>
+    <div className="relative isolate">
+      <ArtBackdrop artId={album.artId} className="-inset-x-4 -top-6 h-80 md:-inset-x-8" />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
         <TrackArt artId={album.artId} className="size-44" />
         <div className="min-w-0">
@@ -61,6 +63,6 @@ export function AlbumPage() {
           <AlbumGrid albums={others} />
         </section>
       )}
-    </>
+    </div>
   )
 }

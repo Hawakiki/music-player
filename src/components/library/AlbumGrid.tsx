@@ -1,5 +1,5 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { AudioLines } from 'lucide-react'
+import { AudioLines, Pause, Play } from 'lucide-react'
 import { useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { IndexRail } from '@/components/library/IndexRail'
@@ -9,7 +9,7 @@ import { useLibraryIndex } from '@/hooks/use-library-index'
 import type { Album } from '@/lib/library/build'
 import { buildIndex } from '@/lib/library/initials'
 import { cn } from '@/lib/utils'
-import { usePlayer } from '@/stores/player-store'
+import { playList, togglePlay, usePlayer } from '@/stores/player-store'
 
 const MIN_TILE_WIDTH = 160
 const COLUMN_GAP = 20
@@ -22,19 +22,33 @@ interface AlbumTileProps {
 }
 
 function AlbumTile({ album, playing }: AlbumTileProps) {
+  const sounding = usePlayer((state) => playing && state.isPlaying)
+
   return (
-    <Link to={`/albums/${album.id}`} className="block min-w-0 rounded-md">
-      <div className="relative">
+    <div className="group relative min-w-0">
+      <Link to={`/albums/${album.id}`} className="block rounded-md">
         <TrackArt artId={album.artId} className="aspect-square w-full" />
+        <p className={cn('mt-2 truncate font-medium', playing && 'text-point')}>{album.title}</p>
+        <p className="truncate text-caption text-faint">{album.artist}</p>
+      </Link>
+      {/* 버튼은 링크 안에 둘 수 없어서 표지 크기의 층을 겹친다. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 aspect-square">
         {playing && (
-          <span className="absolute right-2 bottom-2 grid size-7 place-items-center rounded-md bg-panel text-point">
+          <span className="absolute right-2 bottom-2 grid size-7 place-items-center rounded-md bg-panel text-point transition-opacity group-hover:opacity-0 group-has-[button:focus-visible]:opacity-0">
             <AudioLines aria-label="재생 중" className="size-4" />
           </span>
         )}
+        {/* 마우스가 없으면 안 보이는 버튼이 표지 탭을 가로채므로 아예 뺀다. */}
+        <button
+          type="button"
+          aria-label={sounding ? `${album.title} 일시정지` : `${album.title} 재생`}
+          onClick={() => (playing ? togglePlay() : playList(album.tracks))}
+          className="pointer-events-auto absolute right-2 bottom-2 hidden size-10 translate-y-1 place-items-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-md shadow-black/25 transition group-hover:translate-y-0 group-hover:opacity-100 focus-visible:translate-y-0 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:hover)]:grid"
+        >
+          {sounding ? <Pause fill="currentColor" className="size-4" /> : <Play fill="currentColor" className="ml-0.5 size-4" />}
+        </button>
       </div>
-      <p className={cn('mt-2 truncate font-medium', playing && 'text-point')}>{album.title}</p>
-      <p className="truncate text-caption text-faint">{album.artist}</p>
-    </Link>
+    </div>
   )
 }
 

@@ -65,6 +65,8 @@
   --groove: #3f4348;
   --tonearm: #80868e;
   --tape: #2b2e32;
+  --tint-l: 0.9;
+  --tint-c: 0.035;
 }
 
 /* 블랙 테마 */
@@ -86,6 +88,8 @@
   --groove: #26282c;
   --tonearm: #a7adb4;
   --tape: #4a4f56;
+  --tint-l: 0.3;
+  --tint-c: 0.05;
 }
 
 @layer base {
@@ -109,5 +113,32 @@
   }
   .theme-switching * {
     transition: none !important;
+  }
+}
+
+/* 표지 색 배경. 색을 등록된 속성으로 두어야 곡이 바뀔 때 그라디언트가 서서히 바뀐다. */
+@property --art-tint {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: transparent;
+}
+
+@layer components {
+  .art-backdrop {
+    --tint-chroma: min(var(--art-c), var(--tint-c));
+    background-image: linear-gradient(to bottom, var(--art-tint), transparent);
+    transition: --art-tint 700ms ease;
+  }
+  /* 상한으로 자른 뒤에 줄여야 진한 노랑도 줄어든다. */
+  .dark .art-backdrop {
+    --tint-chroma: calc(min(var(--art-c), var(--tint-c)) * var(--art-dark-scale));
+  }
+  .art-backdrop[data-tinted] {
+    --art-tint: oklch(var(--tint-l) var(--tint-chroma) var(--art-h));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .art-backdrop {
+      transition: none;
+    }
   }
 }
