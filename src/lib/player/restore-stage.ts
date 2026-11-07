@@ -75,6 +75,8 @@ export interface RestoreStage {
   settle: number
   strength: RestoreLevel
   cutoff: number | null
+  fillDb: number
+  fillTicks: number
 }
 
 function bandDb(power: Float64Array, binHz: number, from: number, to: number) {
@@ -180,6 +182,8 @@ export function createRestoreStage(context: BaseAudioContext): RestoreStage {
     settle: 0,
     strength: 'off',
     cutoff: null,
+    fillDb: 0,
+    fillTicks: 0,
   }
 }
 
@@ -198,17 +202,20 @@ function moveLayer(stage: RestoreStage, cutoff: number) {
 }
 
 /** 잘린 지점 바로 아래의 크기에서 이어지도록, 옮겨 올 대역의 시작 크기와의 차이만큼 맞춘다. */
-function getLayerGain(stage: RestoreStage) {
-  const { cutoff, strength, mean } = stage
-  if (cutoff === null || strength === 'off') return 0
-
-  const { sampleRate } = stage.input.context
+function measureFill({ input, mean }: RestoreStage, cutoff: number) {
+  const { sampleRate } = input.context
   const binHz = sampleRate / FFT_SIZE
   const start = cutoff - getShiftHz(cutoff, sampleRate)
   const near = bandDb(mean, binHz, cutoff - 1000, cutoff - EDGE_GAP_HZ)
   const copied = bandDb(mean, binHz, start + EDGE_GAP_HZ, start + 1000)
-  // 평균이 조금 바뀔 때마다 값을 다시 예약하지 않도록 잘게 끊는다.
-  const db = Math.min(near - copied + LAYER_MAKEUP_DB, LAYER_MAX_DB) + RESTORE_LEVELS[strength]
+  return Math.min(near - copied + LAYER_MAKEUP_DB, LAYER_MAX_DB)
+}
+
+function getLayerGain({ cutoff, strength, fillDb }: RestoreStage) {
+  if (cutoff === null || strength === 'off') return 0
+
+  // 값이 조금 바뀔 때마다 다시 예약하지 않도록 잘게 끊는다.
+  const db = fillDb + RESTORE_LEVELS[strength]
   return dbToGain(Math.round(db / LAYER_STEP_DB) * LAYER_STEP_DB)
 }
 
@@ -256,7 +263,16 @@ export function measureRestore(stage: RestoreStage): RestoreStatus {
     stage.cutoff = null
   } else if (stage.cutoff === null || Math.abs(found.cutoff - stage.cutoff) >= MOVE_MIN_HZ) {
     stage.cutoff = found.cutoff
+    // 재는 대역이 바뀌었으니 앞서 잰 값은 쓰지 않는다.
+    stage.fillTicks = 0
     moveLayer(stage, found.cutoff)
+  }
+
+  // 이 차이는 인코더가 구간마다 고역을 다르게 깎아서 곡 안에서 10dB 가까이 움직인다. 그대로 따라가면
+  // 강도 차이보다 크게 흔들리므로, 곡 전체로 다시 평균 내서 초반에는 빨리 맞추고 갈수록 굳힌다.
+  if (stage.cutoff !== null) {
+    stage.fillTicks += 1
+    stage.fillDb += (measureFill(stage, stage.cutoff) - stage.fillDb) / stage.fillTicks
   }
 
   smoothParam(stage.layerGate.gain, stage.cutoff === null ? 0 : 1, CUT_SECONDS, context.currentTime)
@@ -271,6 +287,8 @@ export function resetRestore(stage: RestoreStage) {
   stage.frames = 0
   stage.settle = SETTLE_TICKS
   stage.cutoff = null
+  stage.fillDb = 0
+  stage.fillTicks = 0
   smoothParam(stage.layerGate.gain, 0, CUT_SECONDS, stage.input.context.currentTime)
   smoothParam(stage.layer.gain, 0, CUT_SECONDS, stage.input.context.currentTime)
 }
